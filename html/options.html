@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <title>.torrent to Transmission Options</title>
+
+    <link rel="stylesheet" type="text/css" href="../css/options.css" />
+    <script type="text/javascript" src="../js/options.js"></script>
+</head>
+
+<body>
+    <h1 class="header">.torrent to Transmission</h1>
+    
+    <div class="section">
+        <div class="header">Transmission Server</div>
+        <div class="content">
+            <table>
+                <tr id="rpc-url-row">
+                    <td class="label">RPC address</td>
+                    <td class="field"><input type="url" id="rpc-url" /></td>
+                    <td id="rpc-test-url"></td>
+                </tr>
+                <tr id="web-url-row">
+                    <td class="label">WebUI address</td>
+                    <td class="field"><input type="url" id="web-url" /></td>
+                </tr>
+                <tr id="rpc-user-row">
+                    <td class="label">Username</td>
+                    <td class="field"><input type="text" id="rpc-user" /></td>
+                    <td id="rpc-test-user"></td>
+                </tr>
+                <tr>
+                    <td class="label">Password</td>
+                    <td class="field"><input type="password" id="rpc-pass" /></td>
+                </tr>
+                <tr>
+                    <td class="label">Refresh rate (seconds)</td>
+                    <td class="field"><input type="text" id="refresh-rate" /></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="section">
+        <div class="header">Notifications</div>
+        <div class="content">
+            <input type="checkbox" id="notification-display" /> Display desktop notifications
+            <table id="notification-table">
+                <tr>
+                    <td class="label">Duration (seconds) - 0 for no dismissal</td>
+                    <td class="field"><input type="text" id="notification-duration" /></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+
+    <div class="footer">
+        <input type="submit" value="Save" />
+        <input type="reset" value="Cancel" />
+    </div>
+</body>
+
+</html>
+

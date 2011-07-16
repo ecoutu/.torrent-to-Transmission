@@ -1,0 +1,191 @@
+
+body {
+    font-family: helvetica, arial, sans-serif;
+    font-size: 75%;
+    line-height: 1.125em;
+    overflow: hidden;
+    width: 41em;
+}
+
+body, div {
+    margin: 0px;
+    padding: 0px;
+}
+
+.clear {
+    clear: both;
+}
+
+.stats-wrapper {
+    float: right;
+}
+
+.navitem {
+    padding: 2px 0px;
+    border-top: 2px solid #b5c7de;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 100%;
+    float: left;
+    width: 25%;
+    text-align: center;
+}
+
+.navitem:hover {
+    background-color: #ebeff9;
+}
+
+.navitem.selected {
+    background-color: #b5c7de;
+}
+
+.list-wrapper {
+    margin-top: 1em;
+    padding: 0px 1em;
+    overflow-x: hidden;
+    overflow-y: auto;
+    max-height: 505px;
+}
+
+.list-item {
+    margin-bottom: 1em;
+}
+
+.list-item .name {
+    float: left;
+    width: 34em;
+    overflow: hidden;
+    font-weight: bold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.progress-wrapper {
+
+}
+
+.progress-bar.paused {
+    border: 2px solid grey;
+}
+
+.progress-bar.paused hr {
+    background-color: grey;
+}
+
+.progress-bar.seeding {
+    border: 2px solid green;
+}
+
+.progress-bar.seeding hr {
+    background-color: green;
+}
+
+.progress-bar.downloading {
+    border: 2px solid blue;
+}
+
+.progress-bar.downloading hr {
+    background-color: blue;
+}
+
+.progress-bar.verifying {
+    border: 2px solid yellow;
+}
+
+.progress-bar.verifying hr {
+    background-color: yellow;
+}
+
+.progress-bar {
+    margin-top: 3px;
+    width: 95%;
+    float: left;
+}
+.progress-bar hr {
+    margin: 0px;
+    padding: 0px;
+    height: 4px;
+    border: 0px;
+    text-align: left;
+}
+
+.peer-wrapper {
+    float: left;
+}
+
+.speed-wrapper {
+    float: right;
+    margin-right: 2em;
+}
+
+div.percent {
+    float: right;
+    color: #777;
+    font-size: 0.75em;
+    width: 4em;
+}
+div.pause.torrent, div.resume.torrent {
+    width: 14px;
+    height: 14px;
+    float: right;
+}
+div.pause.torrent {
+    background: url("../img/torrent_buttons.png") no-repeat 0px 0px;
+}
+div.pause.torrent:hover {
+    background: url("../img/torrent_buttons.png") no-repeat 0px -14px;
+}
+div.pause.torrent:active {
+    background: url("../img/torrent_buttons.png") no-repeat 0px -28px;
+}
+div.resume.torrent {
+    background: url("../img/torrent_buttons.png") no-repeat -14px 0px;
+}
+div.resume.torrent:hover {
+    background: url("../img/torrent_buttons.png") no-repeat -14px -14px;
+}
+div.resume.torrent:active {
+    background: url("../img/torrent_buttons.png") no-repeat -14px -28px;
+}
+
+div.button.wrapper {
+    margin: 0px 1em;
+    float: left;
+    cursor: pointer;
+}
+
+div.button.wrapper div {
+    margin: auto;
+    width: 32px;
+    height: 32px;
+}
+
+div.bottom.navbar {
+    background: lightgray;
+}
+
+div.link-wrapper {
+    float: left;
+}
+
+.button.wrapper.webui {
+    margin: 5px;
+}
+
+div.pause.all div {
+    background: url("../img/toolbar_buttons.png") no-repeat 0px -128px;
+}
+
+div.resume.all div {
+    background: url("../img/toolbar_buttons.png") no-repeat 0px -160px;
+}
+
+div.webui div {
+    background: url("../img/icon-32.png") no-repeat;
+}
+
+.error {
+    color: red;
+    white-space: nowrap;
+    margin: 2em;
+}
