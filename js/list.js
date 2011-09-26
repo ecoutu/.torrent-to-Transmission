@@ -1,5 +1,11 @@
 var port = chrome.extension.connect({ name: "list" });
 
+/*
+    Collects the IDs of all torrents currently listed in the UI. IDs are stored
+    as the name attribute of elements with the CSS .list-item class.
+    
+    Returns a list of IDs.
+*/
 function getIds() {
     var ids = [];
     
@@ -52,6 +58,9 @@ $(document).ready(function() {
     $(".webui").html('<a href="' + localStorage.getItem("webURL") + '" target="_blank">WebUI</a>');
 });
 
+/*
+    Generate the HTML for a list item.
+*/
 function createListItem(torrent) {
     var rv = '';
     var percent = new Number(torrent.percentDone * 100).toFixed(2);

@@ -122,7 +122,9 @@ div.percent {
     color: #777;
     font-size: 0.75em;
     width: 4em;
+    text-align: right;
 }
+
 div.pause.torrent, div.resume.torrent, div.remove.torrent {
     width: 14px;
     height: 14px;
@@ -132,6 +134,7 @@ div.pause.torrent, div.resume.torrent, div.remove.torrent {
 div.remove.torrent {
     margin-right: 5px;
 }
+
 div.pause.torrent {
     background: url("../img/torrent_buttons.png") no-repeat 0px 0px;
 }
