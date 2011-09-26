@@ -35,6 +35,8 @@ $(document).ready(function() {
             req.method = "torrent-stop";
         else if ($(this).hasClass("resume"))
             req.method = "torrent-start";
+        else if ($(this).hasClass("remove"))
+            req.method = "torrent-remove";
 
         if ($(this).hasClass("torrent"))
             req.arguments.ids = JSON.parse($(this).closest(".list-item").attr("name"));
@@ -75,8 +77,10 @@ function createListItem(torrent) {
         rv += '<div class="button resume torrent"></div>';
     else
         rv += '<div class="button pause torrent"></div>';
+    rv += '<div class="button remove torrent"></div>';
     rv += '</div>';
     
+    rv += '<div class="clear"></div>';
     if (torrent.status == 1) {
         rv += '<div>Verifying local data (queued)</div>';
     }

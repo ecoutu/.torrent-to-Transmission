@@ -98,7 +98,7 @@ body, div {
 
 .progress-bar {
     margin-top: 3px;
-    width: 95%;
+    width: 93%;
     float: left;
 }
 .progress-bar hr {
@@ -115,7 +115,6 @@ body, div {
 
 .speed-wrapper {
     float: right;
-    margin-right: 2em;
 }
 
 div.percent {
@@ -124,10 +123,14 @@ div.percent {
     font-size: 0.75em;
     width: 4em;
 }
-div.pause.torrent, div.resume.torrent {
+div.pause.torrent, div.resume.torrent, div.remove.torrent {
     width: 14px;
     height: 14px;
     float: right;
+}
+
+div.remove.torrent {
+    margin-right: 5px;
 }
 div.pause.torrent {
     background: url("../img/torrent_buttons.png") no-repeat 0px 0px;
@@ -146,6 +149,15 @@ div.resume.torrent:hover {
 }
 div.resume.torrent:active {
     background: url("../img/torrent_buttons.png") no-repeat -14px -28px;
+}
+div.remove.torrent {
+    background: url("../img/torrent_buttons.png") no-repeat -42px 0px;
+}
+div.remove.torrent:hover {
+    background: url("../img/torrent_buttons.png") no-repeat -42px -14px;
+}
+div.remove.torrent:active {
+    background: url("../img/torrent_buttons.png") no-repeat -42px -28px;
 }
 
 div.button.wrapper {
