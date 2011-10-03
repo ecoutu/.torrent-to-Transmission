@@ -2,6 +2,7 @@
 
 <html>
 <script type="text/javascript" src="../js/torrent.js"></script>
+<script type="text/javascript" src="../js/transmission.js"></script>
 <script type="text/javascript">
 
 var interval;
@@ -34,7 +35,7 @@ chrome.extension.onConnect.addListener(function(port) {
     if (port.name == "options") {
         port.onMessage.addListener(function(msg) {
             if (msg.method == "rpc-test") {
-                rpcRequest(msg.json, function(req) {
+                rpc_request(msg.json, function(req) {
                     port.postMessage({
                         "method": "rpc-test",
                         "req": req
@@ -50,7 +51,7 @@ chrome.extension.onConnect.addListener(function(port) {
         port.onMessage.addListener(function(msg) {
             if (msg.method == "rpc-call") {
                 msg.json.tag = TAGNO;
-                rpcRequest(msg.json, function(req) {
+                rpc_request(msg.json, function(req) {
                     update();
                     port.postMessage({
                         "method": "rpc-complete",
