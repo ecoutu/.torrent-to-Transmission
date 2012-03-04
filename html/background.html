@@ -11,9 +11,6 @@ chrome.contextMenus.create({
     "title": ".torrent to Transmission",
     "contexts": ["link"],
     "onclick": torrentOnClick,
-    "targetUrlPatterns": [
-        "http://*/*"
-    ]
 });
 
 if (!localStorage.isInitialized) {
