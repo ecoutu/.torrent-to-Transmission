@@ -55,6 +55,21 @@ $(document).ready(function() {
         });
     });
     
+    $(".turtle").click(function(event) {
+        var req = {
+            "method": "session-set",
+            "arguments": { }
+        };
+        var turtle_status = $(".turtle").hasClass("on");
+        
+        req.arguments["alt-speed-enabled"] = !turtle_status;
+        
+        port.postMessage({
+            "method": "rpc-call",
+            "json": JSON.stringify(req)
+        });
+    });
+    
     $(".webui").html('<a href="' + localStorage.getItem("webURL") + '" target="_blank">WebUI</a>');
 });
 
@@ -155,6 +170,15 @@ function updateSpeed() {
     $(".stats-wrapper").html(speed);
 }
 
+function updateTurtle() {
+    var session_info = JSON.parse(localStorage.getItem("session-info"));
+    var turtle = session_info.arguments["alt-speed-enabled"];
+    if (turtle)
+        $("img.turtle").removeClass("off").addClass("on");
+    else
+        $("img.turtle").removeClass("on").addClass("off");
+}
+
 function update(event) {
     if (localStorage.getItem("lastStatus") != 200) {
         var msg = '';
@@ -167,12 +191,16 @@ function update(event) {
     else if (typeof event == "undefined") {
         buildList();
         updateSpeed();
+        updateTurtle();
     }
     else if (event.key == "torrents") {
         buildList();
     }
     else if (event.key == "session-stats") {
         updateSpeed();
+    }
+    else if (event.key == "session-info") {
+        updateTurtle();
     }
 }
 

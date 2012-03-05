@@ -177,6 +177,7 @@ div.button.wrapper div {
 
 div.bottom.navbar {
     background: lightgray;
+    padding: 2px;
 }
 
 div.link-wrapper {
@@ -203,4 +204,23 @@ div.webui div {
     color: red;
     white-space: nowrap;
     margin: 2em;
+}
+
+img.turtle {
+    width: 20px;
+    height: 14px;
+    border: 1px solid lightgray;
+}
+
+img.turtle.off {
+    background: url("../img/turtle-grey.png") no-repeat 50% 50%;
+}
+
+img.turtle.on {
+    background: url("../img/turtle-blue.png") no-repeat 50% 50%;
+}
+
+img.turtle:hover {
+    background-color: lightgray;
+    border: 1px solid #b5c7de;
 }

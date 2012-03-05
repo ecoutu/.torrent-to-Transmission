@@ -125,7 +125,18 @@ function update_stats() {
     });
 }
 
+function update_session() {
+    var json = JSON.stringify({
+        "method": "session-get",
+        "tag": TAGNO
+    });
+    rpc_request(json, function(req) {
+        localStorage.setItem("session-info", req.responseText);
+    });
+}
+
 function update() {
     update_stats();
+    update_session();
     update_torrents();
 }
