@@ -136,13 +136,16 @@ function createListItem(torrent) {
     else if (torrent.status == TR_STATUS_CHECK) {
         rv += '<div>Verifying local data (' + recheckProgress + '%)</div>';
     }
+    else if (torrent.status == TR_STATUS_DOWNLOAD_WAIT || torrent.status == TR_STATUS_SEED_WAIT) {
+        rv += '<div>Queued</div>';
+    }
     else {
         rv += '<div class="peer-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD)
             rv += torrent.peersSendingToUs + '&#8595;';
         if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' ' + torrent.peersGettingFromUs + '&#8593;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED) // TODO: add conditions for queued torrents
             rv += ' of ' + torrent.peersConnected + " peers";
         rv += '</div><div class="speed-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD)
