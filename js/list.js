@@ -1,5 +1,24 @@
 var port = chrome.extension.connect({ name: "list" });
 
+if (localStorage.getItem("rpc_version") == 14) {
+    var TR_STATUS_STOPPED = 0;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 3;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 5;
+    var TR_STATUS_SEED = 6;
+}
+else {
+    var TR_STATUS_STOPPED = 16;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 4;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 8;
+    var TR_STATUS_SEED = 8;
+}
+
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
     as the name attribute of elements with the CSS .list-item class.
@@ -82,47 +101,53 @@ function createListItem(torrent) {
     var recheckProgress = new Number(torrent.recheckProgress * 100).toFixed(2);
     var dlSpeed = new Number(torrent.rateDownload / 1024).toFixed(2);
     var ulSpeed = new Number(torrent.rateUpload / 1024).toFixed(2);
+    
     rv += '<div class="list-item" name="' + torrent.id +'">';
     rv += '<div class="name">' + torrent.name + '</div>';
     rv += '<div class="percent"> ' + percent + '%</div>';
     rv += '<div class="clear"></div>';
+    
+    // build progress bar
     rv += '<div class="progress-wrapper">';
-    if (torrent.status == 4)
+    if (torrent.status == TR_STATUS_DOWNLOAD)
         rv += '<div class="progress-bar downloading">';
-    else if (torrent.status == 8)
+    else if (torrent.status == TR_STATUS_SEED)
         rv += '<div class="progress-bar seeding">';
-    else if (torrent.status == 1 || torrent.status == 2)
+    else if (torrent.status == TR_STATUS_CHECK || torrent.status == TR_STATUS_CHECK_WAIT)
             rv += '<div class="progress-bar verifying">'; 
     else
         rv += '<div class="progress-bar paused">';
     rv += '<hr style="width: ' + Math.round(torrent.percentDone * 100) + '%;"></hr>';
     rv += '</div>';
-    if (torrent.status == 16)
+    
+    // build pause/resume button
+    if (torrent.status == TR_STATUS_STOPPED)
         rv += '<div class="button resume torrent"></div>';
     else
         rv += '<div class="button pause torrent"></div>';
     rv += '<div class="button remove torrent"></div>';
-    rv += '</div>';
-    
+    rv += '</div>';    
     rv += '<div class="clear"></div>';
-    if (torrent.status == 1) {
+    
+    // build status info bar
+    if (torrent.status == TR_STATUS_CHECK_WAIT) {
         rv += '<div>Verifying local data (queued)</div>';
     }
-    else if (torrent.status == 2) {
+    else if (torrent.status == TR_STATUS_CHECK) {
         rv += '<div>Verifying local data (' + recheckProgress + '%)</div>';
     }
     else {
         rv += '<div class="peer-wrapper">';
-        if (torrent.status == 4)
+        if (torrent.status == TR_STATUS_DOWNLOAD)
             rv += torrent.peersSendingToUs + '&#8595;';
-        if (torrent.status == 4 || torrent.status == 8)
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' ' + torrent.peersGettingFromUs + '&#8593;';
-        if (torrent.status != 16)
+        if (torrent.status != TR_STATUS_STOPPED) // TODO: add conditions for queued torrents
             rv += ' of ' + torrent.peersConnected + " peers";
         rv += '</div><div class="speed-wrapper">';
-        if (torrent.status == 4)
+        if (torrent.status == TR_STATUS_DOWNLOAD)
             rv +=  ' ' + dlSpeed + ' KB/s &#8595;';
-        if (torrent.status == 4 || torrent.status == 8)
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_CHECK)
             rv += ' ' + ulSpeed + ' KB/s &#8593;';
         rv += '</div>';
         rv += '<div class="clear"></div>';
@@ -138,13 +163,17 @@ function buildList() {
     var elems = {};
     var names = [];
     
+    console.log(torrents);
+    
     for (var id in torrents) {
         var torrent = torrents[id];
         var lName = torrent.name.toLowerCase();
         if ((list == "all") ||
-                (list == "download" && torrent.status == 4) ||
-                (list == "seed" && torrent.status == 8) ||
-                (list == "pause" && torrent.status == 16)) {
+                (list == "download" && torrent.status == TR_STATUS_DOWNLOAD) ||
+                (list == "download" && torrent.status == TR_STATUS_DOWNLOAD_WAIT) ||
+                (list == "seed" && torrent.status == TR_STATUS_SEED) ||
+                (list == "seed" && torrent.status == TR_STATUS_SEED_WAIT) ||
+                (list == "pause" && torrent.status == TR_STATUS_STOPPED)) {
             elems[lName] = createListItem(torrent);
             names.push(lName);
         }

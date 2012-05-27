@@ -1,5 +1,23 @@
 var TAGNO = 12345;
 
+if (localStorage.getItem("rpc_version") == 14) {
+    var TR_STATUS_STOPPED = 0;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 3;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 5;
+    var TR_STATUS_SEED = 6;
+}
+else {
+    var TR_STATUS_STOPPED = 16;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 4;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 8;
+    var TR_STATUS_SEED = 8;
+}
 function rpc_request(json, callback, url, user, pass) {
     var req = new XMLHttpRequest();
     
@@ -94,15 +112,18 @@ function update_torrents() {
 
             if (torrent.status != lastStatus) {
                 switch (torrent.status) {
-                    case 1:  // queued to check files
+                    case TR_STATUS_CHECK_WAIT:  // queued to check files
                         break;
-                    case 2:  // checking files
+                    case TR_STATUS_CHECK:  // checking files
                         break;
-                    case 4:  // downloading
+                    case TR_STATUS_DOWNLOAD:  // downloading
                         break;
-                    case 8:  // seeding
-                    case 16: // stopped
-                        if (lastStatus == 4 && torrent.leftUntilDone == 0)
+                    case TR_STATUS_DOWNLOAD_WAIT:  // queued
+                        break;
+                    case TR_STATUS_SEED_WAIT: // queued to seed
+                    case TR_STATUS_SEED:  // seeding
+                    case TR_STATUS_STOPPED: // stopped
+                        if (lastStatus == TR_STATUS_DOWNLOAD && torrent.leftUntilDone == 0)
                             showNotification("torrent complete", torrent.name);
                         break;
                     default:

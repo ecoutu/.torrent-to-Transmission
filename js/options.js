@@ -1,6 +1,7 @@
 var port = chrome.extension.connect({ name: "options" });
 var saveButton;
 var cancelButton;
+var rpc_version = "";
 function init() {
     document.getElementById("rpc-url").value = localStorage.rpcURL || "";
     document.getElementById("web-url").value = localStorage.webURL || "";
@@ -58,6 +59,7 @@ function save() {
     localStorage.setItem("displayNotification", document.getElementById("notification-display").checked);
     localStorage.setItem("notificationDuration", document.getElementById("notification-duration").value);
     localStorage.setItem("refreshRate", document.getElementById("refresh-rate").value);
+    localStorage.setItem("rpc_version", rpc_version);
     markClean();
 }
 
@@ -84,7 +86,8 @@ port.onMessage.addListener(function(msg) {
         switch (msg.req.status) {
             case 200:
                 var rv = JSON.parse(msg.req.responseText);
-                document.getElementById("rpc-test-url").innerHTML = "Success! RPC version " + rv.arguments["rpc-version"];
+                rpc_version = rv.arguments["rpc-version"];
+                document.getElementById("rpc-test-url").innerHTML = "Success! RPC version " + rpc_version;
                 document.getElementById("rpc-test-url").className = "result";
                 break;
             case 401:
