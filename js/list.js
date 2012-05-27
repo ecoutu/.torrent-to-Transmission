@@ -142,7 +142,7 @@ function createListItem(torrent) {
             rv += torrent.peersSendingToUs + '&#8595;';
         if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' ' + torrent.peersGettingFromUs + '&#8593;';
-        if (torrent.status != TR_STATUS_STOPPED) // TODO: add conditions for queued torrents
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' of ' + torrent.peersConnected + " peers";
         rv += '</div><div class="speed-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD)
