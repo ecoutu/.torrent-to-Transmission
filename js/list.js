@@ -147,7 +147,7 @@ function createListItem(torrent) {
         rv += '</div><div class="speed-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD)
             rv +=  ' ' + dlSpeed + ' KB/s &#8595;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_CHECK)
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' ' + ulSpeed + ' KB/s &#8593;';
         rv += '</div>';
         rv += '<div class="clear"></div>';
