@@ -13,9 +13,9 @@ else {
     var TR_STATUS_STOPPED = 16;
     var TR_STATUS_CHECK_WAIT = 1;
     var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 4;
+    var TR_STATUS_DOWNLOAD_WAIT = 0;
     var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 8;
+    var TR_STATUS_SEED_WAIT = 0;
     var TR_STATUS_SEED = 8;
 }
 
@@ -145,7 +145,7 @@ function createListItem(torrent) {
             rv += torrent.peersSendingToUs + '&#8595;';
         if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' ' + torrent.peersGettingFromUs + '&#8593;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED) // TODO: add conditions for queued torrents
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' of ' + torrent.peersConnected + " peers";
         rv += '</div><div class="speed-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD)
