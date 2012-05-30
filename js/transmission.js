@@ -13,11 +13,12 @@ else {
     var TR_STATUS_STOPPED = 16;
     var TR_STATUS_CHECK_WAIT = 1;
     var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 4;
+    var TR_STATUS_DOWNLOAD_WAIT = 0;
     var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 8;
+    var TR_STATUS_SEED_WAIT = 0;
     var TR_STATUS_SEED = 8;
 }
+
 function rpc_request(json, callback, url, user, pass) {
     var req = new XMLHttpRequest();
     
@@ -88,7 +89,7 @@ function update_torrents() {
                 "peersGettingFromUs",
                 "peersSendingToUs",
                 "recheckProgress",
-                "queuePosition"
+                "queuePosition" 
             ]
         },
         "tag": TAGNO

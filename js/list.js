@@ -166,8 +166,6 @@ function buildList() {
     var elems = {};
     var names = [];
     
-    console.log(torrents);
-    
     for (var id in torrents) {
         var torrent = torrents[id];
         var lName = torrent.name.toLowerCase();

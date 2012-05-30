@@ -2,6 +2,7 @@ var port = chrome.extension.connect({ name: "options" });
 var saveButton;
 var cancelButton;
 var rpc_version = "";
+
 function init() {
     document.getElementById("rpc-url").value = localStorage.rpcURL || "";
     document.getElementById("web-url").value = localStorage.webURL || "";

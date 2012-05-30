@@ -4,7 +4,6 @@
 <script type="text/javascript" src="../js/torrent.js"></script>
 <script type="text/javascript" src="../js/transmission.js"></script>
 <script type="text/javascript">
-
 var interval;
 
 chrome.contextMenus.create({
@@ -22,6 +21,15 @@ if (!localStorage.isInitialized) {
     localStorage.notificationDuration = 10;
     localStorage.refreshRate = 5;
     localStorage.selected_list = "all";
+    
+    var json = JSON.stringify({ "method": "session-get" });
+    rpc_request(json, function(req) {
+        if (req.status == 200) {
+            var rv = JSON.parse(req.response);
+            var rpc_version = rv.arguments["rpc-version"];
+            localStorage.setItem("rpc_version", rpc_version);
+        }
+    });
     
     localStorage.isInitialized = true;
 }
@@ -70,13 +78,13 @@ function onStorageChange(event) {
         localStorage.setItem("torrents", JSON.stringify({}));
     }
 }
-
 if (window.addEventListener)
     window.addEventListener("storage", onStorageChange, false);
 else
     window.attachEvent("onstorage", onStorageChange);
 
 // reset torrents on page creation
+localStorage.setItem("torrents", JSON.stringify({}));
 update();
 </script>
 </html>
