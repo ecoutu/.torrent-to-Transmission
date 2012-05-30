@@ -1,7 +1,7 @@
 {
     "name": ".torrent to Transmission",
     "description": "Automagically add, access and control torrents with Chrome.",
-    "version": "0.4.6",
+    "version": "0.4.14",
     "permissions": [
         "contextMenus",
         "notifications",
