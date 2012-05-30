@@ -136,8 +136,11 @@ function createListItem(torrent) {
     else if (torrent.status == TR_STATUS_CHECK) {
         rv += '<div>Verifying local data (' + recheckProgress + '%)</div>';
     }
-    else if (torrent.status == TR_STATUS_DOWNLOAD_WAIT || torrent.status == TR_STATUS_SEED_WAIT) {
-        rv += '<div>Queued</div>';
+    else if (torrent.status == TR_STATUS_DOWNLOAD_WAIT) {
+        rv += '<div>Queued to download</div>';
+    }
+    else if (torrent.status == TR_STATUS_SEED_WAIT) {
+        rv += '<div>Queued to seed</div>';
     }
     else {
         rv += '<div class="peer-wrapper">';
