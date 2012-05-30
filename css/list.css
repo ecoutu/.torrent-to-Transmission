@@ -44,7 +44,7 @@ body, div {
     padding: 0px 1em;
     overflow-x: hidden;
     overflow-y: auto;
-    max-height: 505px;
+    max-height: 500px;
 }
 
 .list-item {
