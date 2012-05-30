@@ -37,11 +37,29 @@ function torrentOnClick(info, tab) {
 
     rpc_request(json, function(req) {
         try {
-            var rv = JSON.parse(req.responseText);
-            if (rv["result"] == "success")
-                showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
-            else
-                showNotification("failed to start torrent", rv["result"]);
+            if (localStorage.getItem("lastStatus") == 200) {
+                var rv = JSON.parse(req.responseText);
+                if (rv["result"] == "success")
+                    showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
+                else
+                    showNotification("failed to start torrent", rv["result"]);
+            }
+            else {
+                var title = "unable to contact " + localStorage.getItem("rpcURL");
+                var text = "";
+                switch (JSON.parse(localStorage.getItem("lastStatus"))) {
+                    case 0:
+                        text = "no response";
+                        break;
+                    case 401:
+                        text = "invalid username/password";
+                        break;
+                    default:
+                        text = "unrecognized response";
+                        break;
+                }
+                showNotification(title, text);
+            }
         } catch (err) {
             
         }
