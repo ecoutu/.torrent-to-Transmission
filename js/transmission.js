@@ -98,10 +98,13 @@ function update_torrents() {
     rpc_request(json, function(req) {
         var torrents = JSON.parse(localStorage.getItem("torrents"));
         var remTorrents = { };
+        var nDLs = 0, nULs = 0;
+        var badgeText = "";
         
         try {
             var rv = JSON.parse(req.responseText);
         } catch (err) {
+            chrome.browserAction.setBadgeText({ "text": "err" });
             return;
         }        
         
@@ -112,28 +115,44 @@ function update_torrents() {
             if (torrent.id in torrents)
                 lastStatus = torrents[torrent.id].status;
 
-            if (torrent.status != lastStatus) {
-                switch (torrent.status) {
-                    case TR_STATUS_CHECK_WAIT:  // queued to check files
-                        break;
-                    case TR_STATUS_CHECK:  // checking files
-                        break;
-                    case TR_STATUS_DOWNLOAD:  // downloading
-                        break;
-                    case TR_STATUS_DOWNLOAD_WAIT:  // queued
-                        break;
-                    case TR_STATUS_SEED_WAIT: // queued to seed
-                    case TR_STATUS_SEED:  // seeding
-                    case TR_STATUS_STOPPED: // stopped
-                        if (lastStatus == TR_STATUS_DOWNLOAD && torrent.leftUntilDone == 0)
-                            showNotification("torrent complete", torrent.name);
-                        break;
-                    default:
-                        break;
-                }
+            switch (torrent.status) {
+                case TR_STATUS_CHECK_WAIT:  // queued to check files
+                    break;
+                case TR_STATUS_CHECK:  // checking files
+                    break;
+                case TR_STATUS_DOWNLOAD:  // downloading
+                    nDLs += 1;
+                    break;
+                case TR_STATUS_DOWNLOAD_WAIT:  // queued
+                    break;
+                case TR_STATUS_SEED_WAIT: // queued to seed
+                    break;
+                case TR_STATUS_SEED:  // seeding
+                    nULs += 1;
+                    break;
+                case TR_STATUS_STOPPED: // stopped
+                    if (torrent.status != lastStatus && lastStatus == TR_STATUS_DOWNLOAD && torrent.leftUntilDone == 0)
+                        showNotification("torrent complete", torrent.name);
+                    break;
+                default:
+                    break;
             }
             remTorrents[torrent.id] = torrent;
         }
+        
+        if (nDLs < 10)
+            badgeText = nDLs;
+        else
+            badgeText = "*";
+            
+        badgeText += "/";
+        
+        if (nULs < 10)
+            badgeText += nULs;
+        else
+            badgeText += "*";
+        chrome.browserAction.setBadgeText({ "text": badgeText });
+
         localStorage.setItem("torrents", JSON.stringify(remTorrents));
     });   
 }
