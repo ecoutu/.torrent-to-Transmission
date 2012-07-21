@@ -1,6 +1,10 @@
+// TODO: Check if queue is global or each status has it's own queue.
+
 var port = chrome.extension.connect({ name: "list" });
 
-if (localStorage.getItem("rpc_version") == 14) {
+var RPC_VERSION = localStorage.getItem("rpc_version");
+
+if (RPC_VERSION == 14) {
     var TR_STATUS_STOPPED = 0;
     var TR_STATUS_CHECK_WAIT = 1;
     var TR_STATUS_CHECK = 2;
@@ -62,6 +66,10 @@ $(document).ready(function() {
             req.method = "torrent-start";
         else if ($(this).hasClass("remove"))
             req.method = "torrent-remove";
+        else if ($(this).hasClass("queue-up"))
+            req.method = "queue-move-up";
+        else if ($(this).hasClass("queue-down"))
+            req.method = "queue-move-down";
 
         if ($(this).hasClass("torrent"))
             req.arguments.ids = JSON.parse($(this).closest(".list-item").attr("name"));
@@ -101,22 +109,34 @@ function createListItem(torrent) {
     var recheckProgress = new Number(torrent.recheckProgress * 100).toFixed(2);
     var dlSpeed = new Number(torrent.rateDownload / 1024).toFixed(2);
     var ulSpeed = new Number(torrent.rateUpload / 1024).toFixed(2);
+    var classes = '';
     
     rv += '<div class="list-item" name="' + torrent.id +'">';
     rv += '<div class="name">' + torrent.name + '</div>';
     rv += '<div class="percent"> ' + percent + '%</div>';
     rv += '<div class="clear"></div>';
     
-    // build progress bar
-    rv += '<div class="progress-wrapper">';
+    // queue buttons if RPC supports it
+    if (RPC_VERSION == 14)
+        rv += '<div class="button queue-up torrent"></div><div class="button queue-down torrent"></div>';
+
+    // progress bar
+    classes = 'progress-bar';
     if (torrent.status == TR_STATUS_DOWNLOAD)
-        rv += '<div class="progress-bar downloading">';
+        classes += ' downloading';
     else if (torrent.status == TR_STATUS_SEED)
-        rv += '<div class="progress-bar seeding">';
+        classes += ' seeding';
     else if (torrent.status == TR_STATUS_CHECK || torrent.status == TR_STATUS_CHECK_WAIT)
-            rv += '<div class="progress-bar verifying">'; 
+        classes += ' verifying';
     else
-        rv += '<div class="progress-bar paused">';
+        classes += ' paused';
+    
+    // add custom class for progress bar if RPC supports queue
+    if (RPC_VERSION == 14)
+        classes += ' v14';
+        
+    rv += '<div class="' + classes + '">';
+    
     rv += '<hr style="width: ' + Math.round(torrent.percentDone * 100) + '%;"></hr>';
     rv += '</div>';
     
@@ -126,7 +146,6 @@ function createListItem(torrent) {
     else
         rv += '<div class="button pause torrent"></div>';
     rv += '<div class="button remove torrent"></div>';
-    rv += '</div>';    
     rv += '<div class="clear"></div>';
     
     // build status info bar
@@ -166,28 +185,27 @@ function createListItem(torrent) {
 function buildList() {
     var list = localStorage.getItem("selected_list");
     var torrents = JSON.parse(localStorage.getItem("torrents"));      
-    var elems = {};
-    var names = [];
+    var sortable = [];
     
     for (var id in torrents) {
         var torrent = torrents[id];
-        var lName = torrent.name.toLowerCase();
         if ((list == "all") ||
                 (list == "download" && torrent.status == TR_STATUS_DOWNLOAD) ||
                 (list == "download" && torrent.status == TR_STATUS_DOWNLOAD_WAIT) ||
                 (list == "seed" && torrent.status == TR_STATUS_SEED) ||
                 (list == "seed" && torrent.status == TR_STATUS_SEED_WAIT) ||
                 (list == "pause" && torrent.status == TR_STATUS_STOPPED)) {
-            elems[lName] = createListItem(torrent);
-            names.push(lName);
+            sortable.push(torrent);
         }
     }
-    names.sort();
+    sortable.sort(function(a, b) {
+        return a.queuePosition - b.queuePosition;
+    });
     
     $(".list-wrapper").empty();
     
-    for (var i in names) {
-        $(".list-wrapper").append(elems[names[i]]);
+    for (var i in sortable) {
+        $(".list-wrapper").append(createListItem(sortable[i]));
     }
 }
 
