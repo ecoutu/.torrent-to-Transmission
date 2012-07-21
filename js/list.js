@@ -115,7 +115,6 @@ function createListItem(torrent) {
     
     rv += '<div class="list-item" name="' + torrent.id +'">';
     rv += '<div class="name">' + torrent.name + '</div>';
-//    rv += '<div class="percent"> ' + percent + '%</div>';
     rv += '<div class="clear"></div>';
     
     // queue buttons if RPC supports it
@@ -220,7 +219,8 @@ function createListItem(torrent) {
         
         if (torrent.status == TR_STATUS_DOWNLOAD) {
             rv += finish_str + ' of ' + size_str + ' (' + percent_done + '%)';
-            rv += ' - ' + eta_str;
+            if (eta > 0)
+                rv += ' - ' + eta_str;
         }
         if (torrent.status == TR_STATUS_SEED)
             rv += size_str;
