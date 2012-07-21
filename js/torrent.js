@@ -22,8 +22,17 @@ function showNotification(title, text) {
     notification.show();
 }
 
+/*
+    Chrome right click context action adds sends URL to Transmission RPC.
+    
+    info: provides information of link clicked
+    tab: not sure, not used
+*/
 function torrentOnClick(info, tab) {
-    var json = JSON.stringify({
+    var json;
+    
+    // request
+    json = JSON.stringify({
         "method": "torrent-add",
         "arguments": {
             "filename": info.linkUrl,
@@ -31,9 +40,6 @@ function torrentOnClick(info, tab) {
         },
         "tag": TAGNO
     });
-
-    if (!JSON.parse(localStorage.displayNotification))
-        return;
 
     rpc_request(json, function(req) {
         try {
