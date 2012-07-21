@@ -1,8 +1,17 @@
-function showNotification(title, text) {
-    var timeout = localStorage.notificationDuration;
+/*
+    Show Chrome desktop notification.
     
+    title: notification title
+    text: notification text
+*/
+function showNotification(title, text) {
+    // timeout stored from options
+    var timeout = localStorage.notificationDuration;
+
+    // notifications disabled    
     if (!JSON.parse(localStorage.displayNotification))
         return;
+    // notifications not supported
     else if (!webkitNotifications)
         return;
 
@@ -12,6 +21,7 @@ function showNotification(title, text) {
         text
     );
 
+    // destroy notification if timeout > 0
     if (timeout != 0) {
         notification.ondisplay = function() {
             setTimeout(function() {
@@ -26,7 +36,7 @@ function showNotification(title, text) {
     Chrome right click context action adds sends URL to Transmission RPC.
     
     info: provides information of link clicked
-    tab: not sure, not used
+    tab: unused
 */
 function torrentOnClick(info, tab) {
     var json;
@@ -44,6 +54,7 @@ function torrentOnClick(info, tab) {
     rpc_request(json, function(req) {
         try {
             if (localStorage.getItem("lastStatus") == 200) {
+                // received response, notify if added or not
                 var rv = JSON.parse(req.responseText);
                 if (rv["result"] == "success")
                     showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
@@ -51,6 +62,7 @@ function torrentOnClick(info, tab) {
                     showNotification("failed to start torrent", rv["result"]);
             }
             else {
+                // unable to contact server
                 var title = "unable to contact " + localStorage.getItem("rpcURL");
                 var text = "";
                 switch (JSON.parse(localStorage.getItem("lastStatus"))) {
