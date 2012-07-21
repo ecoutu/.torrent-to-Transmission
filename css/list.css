@@ -61,11 +61,11 @@ body, div {
 }
 
 .progress-bar.error {
-    border: 2px solid red;
+    border: 2px solid #f97d6d;
 }
 
 .progress-bar.error hr {
-    background-color: red;
+    background-color: #f6c9c2;
 }
 
 .progress-bar.paused {
@@ -77,27 +77,27 @@ body, div {
 }
 
 .progress-bar.seeding {
-    border: 2px solid green;
+    border: 2px solid #7bd148;
 }
 
 .progress-bar.seeding hr {
-    background-color: green;
+    background-color: #daf2cc;
 }
 
 .progress-bar.downloading {
-    border: 2px solid blue;
+    border: 2px solid #2c70d1;
 }
 
 .progress-bar.downloading hr {
-    background-color: blue;
+    background-color: #4986e7;
 }
 
 .progress-bar.verifying {
-    border: 2px solid yellow;
+    border: 2px solid #fad165;
 }
 
 .progress-bar.verifying hr {
-    background-color: yellow;
+    background-color: #fef2d3;
 }
 
 .progress-bar {
@@ -237,7 +237,7 @@ div.webui div {
     background: url("../img/icon-32.png") no-repeat;
 }
 
-span.error {
+div.transmission-error {
     color: red;
     white-space: nowrap;
     margin: 2em;

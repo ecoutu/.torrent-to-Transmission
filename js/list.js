@@ -238,10 +238,10 @@ function updateTurtle() {
 function update(event) {
     if (localStorage.getItem("lastStatus") != 200) {
         var msg = '';
-        msg += '<div><span class="error">Unable to contact Transmission server ';
+        msg += '<div class="transmission-error">Unable to contact Transmission server ';
         msg += localStorage.getItem("rpcURL");
         msg += '<br /><a href="' + chrome.extension.getURL("../html/options.html") +'" target="_blank">';
-        msg += 'go to the options page</a></span></div>';
+        msg += 'go to the options page</a></div>';
         $("body").html(msg);
     }
     else if (typeof event == "undefined") {
