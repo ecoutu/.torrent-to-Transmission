@@ -89,7 +89,9 @@ function update_torrents() {
                 "peersGettingFromUs",
                 "peersSendingToUs",
                 "recheckProgress",
-                "queuePosition" 
+                "queuePosition",
+                "error",
+                "errorString"
             ]
         },
         "tag": TAGNO

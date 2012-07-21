@@ -122,7 +122,9 @@ function createListItem(torrent) {
 
     // progress bar
     classes = 'progress-bar';
-    if (torrent.status == TR_STATUS_DOWNLOAD)
+    if (torrent.error == 3)
+        classes += ' error';
+    else if (torrent.status == TR_STATUS_DOWNLOAD)
         classes += ' downloading';
     else if (torrent.status == TR_STATUS_SEED)
         classes += ' seeding';
@@ -149,7 +151,10 @@ function createListItem(torrent) {
     rv += '<div class="clear"></div>';
     
     // build status info bar
-    if (torrent.status == TR_STATUS_CHECK_WAIT) {
+    if (torrent.error == 3) {
+        rv += '<div>' + "Data not found" + '</div>';
+    }
+    else if (torrent.status == TR_STATUS_CHECK_WAIT) {
         rv += '<div>Verifying local data (queued)</div>';
     }
     else if (torrent.status == TR_STATUS_CHECK) {
@@ -233,10 +238,10 @@ function updateTurtle() {
 function update(event) {
     if (localStorage.getItem("lastStatus") != 200) {
         var msg = '';
-        msg += '<div class="error">Unable to contact Transmission server ';
+        msg += '<div><span class="error">Unable to contact Transmission server ';
         msg += localStorage.getItem("rpcURL");
         msg += '<br /><a href="' + chrome.extension.getURL("../html/options.html") +'" target="_blank">';
-        msg += 'go to the options page</a></div>';
+        msg += 'go to the options page</a></span></div>';
         $("body").html(msg);
     }
     else if (typeof event == "undefined") {

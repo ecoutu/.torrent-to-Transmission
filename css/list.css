@@ -60,6 +60,14 @@ body, div {
     white-space: nowrap;
 }
 
+.progress-bar.error {
+    border: 2px solid red;
+}
+
+.progress-bar.error hr {
+    background-color: red;
+}
+
 .progress-bar.paused {
     border: 2px solid grey;
 }
@@ -229,7 +237,7 @@ div.webui div {
     background: url("../img/icon-32.png") no-repeat;
 }
 
-.error {
+span.error {
     color: red;
     white-space: nowrap;
     margin: 2em;
