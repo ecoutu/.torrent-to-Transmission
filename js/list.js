@@ -163,6 +163,7 @@ function createListItem(torrent) {
         rv += '<div>Verifying local data (' + recheckProgress + '%)</div>';
     }
     else if (torrent.status == TR_STATUS_DOWNLOAD_WAIT) {
+        // TODO: Add completion information for queued downloads.
         rv += '<div>Queued for download</div>';
     }
     else if (torrent.status == TR_STATUS_SEED_WAIT) {
