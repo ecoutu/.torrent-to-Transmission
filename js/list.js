@@ -23,6 +23,8 @@ else {
     var TR_STATUS_SEED = 8;
 }
 
+var SIZE_PREFIX = [ '', 'k', 'm', 'g', 't', 'p' ]
+
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
     as the name attribute of elements with the CSS .list-item class.
@@ -113,7 +115,7 @@ function createListItem(torrent) {
     
     rv += '<div class="list-item" name="' + torrent.id +'">';
     rv += '<div class="name">' + torrent.name + '</div>';
-    rv += '<div class="percent"> ' + percent + '%</div>';
+//    rv += '<div class="percent"> ' + percent + '%</div>';
     rv += '<div class="clear"></div>';
     
     // queue buttons if RPC supports it
@@ -167,13 +169,60 @@ function createListItem(torrent) {
         rv += '<div>Queued for seed</div>';
     }
     else {
-        rv += '<div class="peer-wrapper">';
-        if (torrent.status == TR_STATUS_DOWNLOAD)
-            rv += torrent.peersSendingToUs + '&#8595;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
-            rv += ' ' + torrent.peersGettingFromUs + '&#8593;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
-            rv += ' of ' + torrent.peersConnected + " peers";
+        var size_bytes = torrent.sizeWhenDone;
+        var finished_bytes = size_bytes - torrent.leftUntilDone;
+        var eta = torrent.eta;
+        var percent_done = new Number(torrent.percentDone * 100).toFixed(2);
+        var size_str = '', finish_str = '';
+        var eta_str = '';
+        
+        for (var i = 0; i < 6; i++) {
+            if (size_bytes < 1000) {
+                size_str = new Number(size_bytes).toFixed(2) + " " + SIZE_PREFIX[i] + 'B';
+                break;
+            }
+            else {
+                size_bytes = size_bytes / 1000;
+            }
+        }
+        
+        for (var i = 0; i < 6; i++) {
+            if (finished_bytes < 1000) {
+                finish_str = new Number(finished_bytes).toFixed(2) + " " + SIZE_PREFIX[i] + "B";
+                break;
+            }
+            else {
+                finished_bytes = finished_bytes / 1000;
+            }
+        }
+        
+        if (eta < 0) {
+            eta_str = ''; 
+        }
+        else if (eta < 60) {
+            eta_str = new Number(eta) + ' seconds';
+        }
+        else if (eta < 3600) {
+            eta_str = Math.floor(eta/60) + ' minutes, ' + new Number(eta % 60).toFixed(0) + ' seconds';
+        }
+        else if (eta < 86400) {
+            eta_str = Math.floor(eta/3600) + ' hours, ' + new Number((eta % 3600) / 60).toFixed(0) + ' minutes';
+        }
+        else if (eta < 604800) {
+            eta_str = Math.floor(eta/86400) + ' days, ' + new Number((eta % 86400) / 3600).toFixed(0) + ' hours';
+        }
+        else {
+            eta_str = Math.floor(eta/604800) + ' weeks, ' + new Number((eta % 604800) / 86400).toFixed(0) + ' days';
+        }
+
+        rv += '<div class="status-wrapper">';
+        
+        if (torrent.status == TR_STATUS_DOWNLOAD) {
+            rv += finish_str + ' of ' + size_str + ' (' + percent_done + '%)';
+            rv += ' - ' + eta_str;
+        }
+        if (torrent.status == TR_STATUS_SEED)
+            rv += size_str;
         rv += '</div><div class="speed-wrapper">';
         if (torrent.status == TR_STATUS_DOWNLOAD) {
             if (dlSpeed < 1024.0) {

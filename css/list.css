@@ -117,12 +117,22 @@ body, div {
     text-align: left;
 }
 
-.peer-wrapper {
+div.status-wrapper {
     float: left;
+    margin: 0px;
+    width: 50%;
+    text-align: left;
+    color: #777;
+    font-size: 0.75em;
 }
 
-.speed-wrapper {
+div.speed-wrapper {
     float: right;
+    margin: 0px;
+    width: 50%;
+    text-align: right;
+    color: #777;
+    font-size: 0.75em;
 }
 
 div.percent {

@@ -81,6 +81,7 @@ function update_torrents() {
                 "id",
                 "name",
                 "status",
+                "sizeWhenDone",
                 "leftUntilDone",
                 "percentDone",
                 "rateDownload",
@@ -91,7 +92,8 @@ function update_torrents() {
                 "recheckProgress",
                 "queuePosition",
                 "error",
-                "errorString"
+                "errorString",
+                "eta"
             ]
         },
         "tag": TAGNO
