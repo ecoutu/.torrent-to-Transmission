@@ -107,8 +107,8 @@ function createListItem(torrent) {
     var rv = '';
     var percent = new Number(torrent.percentDone * 100).toFixed(2);
     var recheckProgress = new Number(torrent.recheckProgress * 100).toFixed(2);
-    var dlSpeed = new Number(torrent.rateDownload / 1024).toFixed(2);
-    var ulSpeed = new Number(torrent.rateUpload / 1024).toFixed(2);
+    var dlSpeed = new Number(torrent.rateDownload / 1024);
+    var ulSpeed = new Number(torrent.rateUpload / 1024);
     var classes = '';
     
     rv += '<div class="list-item" name="' + torrent.id +'">';
@@ -175,10 +175,28 @@ function createListItem(torrent) {
         if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
             rv += ' of ' + torrent.peersConnected + " peers";
         rv += '</div><div class="speed-wrapper">';
-        if (torrent.status == TR_STATUS_DOWNLOAD)
-            rv +=  ' ' + dlSpeed + ' KB/s &#8595;';
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
-            rv += ' ' + ulSpeed + ' KB/s &#8593;';
+        if (torrent.status == TR_STATUS_DOWNLOAD) {
+            if (dlSpeed < 1024.0) {
+                dlSpeed = dlSpeed.toFixed(0);
+                rv +=  ' ' + dlSpeed + ' kB/s &#8595;';
+            }
+            else {
+                dlSpeed = dlSpeed / 1024.0;
+                dlSpeed = dlSpeed.toFixed(2);
+                rv +=  ' ' + dlSpeed + ' mB/s &#8595;';
+            }
+        }
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED) {
+            if (ulSpeed < 1024.0) {
+                ulSpeed = ulSpeed.toFixed(0);
+                rv +=  ' ' + ulSpeed + ' kB/s &#8593;';
+            }
+            else {
+                ulSpeed = ulSpeed / 1024.0;
+                ulSpeed = ulSpeed.toFixed(2);
+                rv +=  ' ' + ulSpeed + ' mB/s &#8593;';
+            }
+        }
         rv += '</div>';
         rv += '<div class="clear"></div>';
     }
@@ -216,13 +234,30 @@ function buildList() {
 
 function updateSpeed() {
     var stats = JSON.parse(localStorage.getItem("session-stats"));
-    var downSpeed = new Number(stats.arguments.downloadSpeed / 1024).toFixed(2);
-    var upSpeed = new Number(stats.arguments.uploadSpeed / 1024).toFixed(2);
+    var downSpeed = new Number(stats.arguments.downloadSpeed / 1024);
+    var upSpeed = new Number(stats.arguments.uploadSpeed / 1024);
     var speed = "";
     
-    speed += downSpeed + " KB/s &#8595; ";
-    speed += upSpeed + " KB/s &#8593;";
+    if (downSpeed < 1024) {
+        downSpeed = downSpeed.toFixed(0);
+        speed += downSpeed + " kB/s &#8595; ";
+    }
+    else {
+        downSpeed = downSpeed / 1024;
+        downSpeed = downSpeed.toFixed(2);
+        speed += downSpeed + " mB/s &#8595; ";
+    }
     
+    if (upSpeed < 1024) {
+        upSpeed = upSpeed.toFixed(0);
+        speed += upSpeed + " kB/s &#8593;";
+    }
+    else {
+        upSpeed = upSpeed / 1024;
+        upSpeed = upSpeed.toFixed(2);
+        speed += upSpeed + " mB/s &#8593;";
+    }
+	   
     $(".stats-wrapper").html(speed);
 }
 
