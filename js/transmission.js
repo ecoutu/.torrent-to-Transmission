@@ -107,8 +107,12 @@ function update_torrents() {
         
         try {
             var rv = JSON.parse(req.responseText);
+            chrome.browserAction.setIcon({ "path": "../img/icon-bitty.png" })
+            chrome.browserAction.setBadgeBackgroundColor({ "color": "#F00" });
         } catch (err) {
-            chrome.browserAction.setBadgeText({ "text": "err" });
+            chrome.browserAction.setBadgeText({ "text": "?" });
+            chrome.browserAction.setBadgeBackgroundColor({ "color": "#7f7f7f" });
+            chrome.browserAction.setIcon({ "path": "../img/icon-grey-bitty.png" })
             return;
         }        
         
