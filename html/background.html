@@ -12,6 +12,9 @@ chrome.contextMenus.create({
     "onclick": torrentOnClick,
 });
 
+/*
+    Initial load.
+*/
 if (!localStorage.isInitialized) {
     localStorage.rpcUser = "";
     localStorage.rpcPass = "";
@@ -78,6 +81,7 @@ function onStorageChange(event) {
         localStorage.setItem("torrents", JSON.stringify({}));
     }
 }
+
 if (window.addEventListener)
     window.addEventListener("storage", onStorageChange, false);
 else
