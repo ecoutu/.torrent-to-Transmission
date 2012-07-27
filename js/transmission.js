@@ -47,26 +47,46 @@ function rpc_request(json, callback, url, user, pass) {
     req.send(json);
 }
 
-function add_torrent(info, tab) {
-    var json = JSON.stringify({
+function add_torrent(link_url) {
+    var json;
+    
+    // request
+    json = JSON.stringify({
         "method": "torrent-add",
         "arguments": {
-            "filename": info.linkUrl,
+            "filename": link_url,
             "paused": false
         },
         "tag": TAGNO
     });
 
-    if (!JSON.parse(localStorage.displayNotification))
-        return;
-
     rpc_request(json, function(req) {
         try {
-            var rv = JSON.parse(req.responseText);
-            if (rv["result"] == "success")
-                showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
-            else
-                showNotification("failed to start torrent", rv["result"]);
+            if (localStorage.getItem("lastStatus") == 200) {
+                // received response, notify if added or not
+                var rv = JSON.parse(req.responseText);
+                if (rv["result"] == "success")
+                    showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
+                else
+                    showNotification("failed to start torrent", rv["result"]);
+            }
+            else {
+                // unable to contact server
+                var title = "unable to contact " + localStorage.getItem("rpcURL");
+                var text = "";
+                switch (JSON.parse(localStorage.getItem("lastStatus"))) {
+                    case 0:
+                        text = "no response";
+                        break;
+                    case 401:
+                        text = "invalid username/password";
+                        break;
+                    default:
+                        text = "unrecognized response";
+                        break;
+                }
+                showNotification(title, text);
+            }
         } catch (err) {
             
         }
