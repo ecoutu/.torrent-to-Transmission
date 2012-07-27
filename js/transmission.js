@@ -186,7 +186,7 @@ function update_session() {
 }
 
 function update() {
-    update_stats();
     update_session();
+    update_stats();
     update_torrents();
 }

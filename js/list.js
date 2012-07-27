@@ -1,5 +1,3 @@
-// TODO: Check if queue is global or each status has it's own queue.
-
 var port = chrome.extension.connect({ name: "list" });
 
 var RPC_VERSION = localStorage.getItem("rpc_version");
@@ -23,7 +21,10 @@ else {
     var TR_STATUS_SEED = 8;
 }
 
-var SIZE_PREFIX = [ '', 'k', 'm', 'g', 't', 'p' ]
+var SIZE_PREFIX = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["size-units"];
+var SPEED_PREFIX = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["speed-units"];
+var SIZE_BYTES = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["size-bytes"];
+var SPEED_BYTES = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["speed-bytes"];
 
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
@@ -39,6 +40,24 @@ function getIds() {
     });
     
     return ids;
+}
+
+function size_to_str(size, units, unit_size) {
+    var size_str = size.toFixed(0);
+    var unit_str = "";
+    
+    for (var i = 0; i < units.length; i++) {
+        if (size < unit_size) {
+            unit_str = units[i];
+            break;
+        }
+        else {
+            size = size / unit_size;
+            size_str = size.toFixed(2);
+        }
+    }
+    
+    return size_str + " " + unit_str;
 }
 
 $(document).ready(function() {
@@ -109,8 +128,8 @@ function createListItem(torrent) {
     var rv = '';
     var percent = new Number(torrent.percentDone * 100).toFixed(2);
     var recheckProgress = new Number(torrent.recheckProgress * 100).toFixed(2);
-    var dlSpeed = new Number(torrent.rateDownload / 1024);
-    var ulSpeed = new Number(torrent.rateUpload / 1024);
+    var dlSpeed = new Number(torrent.rateDownload / SPEED_BYTES);
+    var ulSpeed = new Number(torrent.rateUpload / SPEED_BYTES);
     var classes = '';
     
     rv += '<div class="list-item" name="' + torrent.id +'">';
@@ -176,25 +195,11 @@ function createListItem(torrent) {
         var size_str = '', finish_str = '';
         var eta_str = '';
         
-        for (var i = 0; i < 6; i++) {
-            if (size_bytes < 1000) {
-                size_str = new Number(size_bytes).toFixed(2) + " " + SIZE_PREFIX[i] + 'B';
-                break;
-            }
-            else {
-                size_bytes = size_bytes / 1000;
-            }
-        }
-        
-        for (var i = 0; i < 6; i++) {
-            if (finished_bytes < 1000) {
-                finish_str = new Number(finished_bytes).toFixed(2) + " " + SIZE_PREFIX[i] + "B";
-                break;
-            }
-            else {
-                finished_bytes = finished_bytes / 1000;
-            }
-        }
+        size_bytes = size_bytes / SIZE_BYTES;
+        finished_bytes = finished_bytes / SIZE_BYTES;
+
+        size_str = size_to_str(size_bytes, SIZE_PREFIX, SIZE_BYTES);
+        finish_str = size_to_str(finished_bytes, SIZE_PREFIX, SIZE_BYTES);
         
         if (eta < 0) {
             eta_str = ''; 
@@ -225,28 +230,13 @@ function createListItem(torrent) {
         if (torrent.status == TR_STATUS_SEED)
             rv += size_str;
         rv += '</div><div class="speed-wrapper">';
-        if (torrent.status == TR_STATUS_DOWNLOAD) {
-            if (dlSpeed < 1024.0) {
-                dlSpeed = dlSpeed.toFixed(0);
-                rv +=  ' ' + dlSpeed + ' kB/s &#8595;';
-            }
-            else {
-                dlSpeed = dlSpeed / 1024.0;
-                dlSpeed = dlSpeed.toFixed(2);
-                rv +=  ' ' + dlSpeed + ' mB/s &#8595;';
-            }
-        }
-        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED) {
-            if (ulSpeed < 1024.0) {
-                ulSpeed = ulSpeed.toFixed(0);
-                rv +=  ' ' + ulSpeed + ' kB/s &#8593;';
-            }
-            else {
-                ulSpeed = ulSpeed / 1024.0;
-                ulSpeed = ulSpeed.toFixed(2);
-                rv +=  ' ' + ulSpeed + ' mB/s &#8593;';
-            }
-        }
+
+        if (torrent.status == TR_STATUS_DOWNLOAD)
+            rv += " " + size_to_str(dlSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8595;";
+
+        if (torrent.status == TR_STATUS_DOWNLOAD || torrent.status == TR_STATUS_SEED)
+            rv += " " + size_to_str(ulSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8593;";
+
         rv += '</div>';
         rv += '<div class="clear"></div>';
     }
@@ -284,31 +274,10 @@ function buildList() {
 
 function updateSpeed() {
     var stats = JSON.parse(localStorage.getItem("session-stats"));
-    var downSpeed = new Number(stats.arguments.downloadSpeed / 1024);
-    var upSpeed = new Number(stats.arguments.uploadSpeed / 1024);
-    var speed = "";
-    
-    if (downSpeed < 1024) {
-        downSpeed = downSpeed.toFixed(0);
-        speed += downSpeed + " kB/s &#8595; ";
-    }
-    else {
-        downSpeed = downSpeed / 1024;
-        downSpeed = downSpeed.toFixed(2);
-        speed += downSpeed + " mB/s &#8595; ";
-    }
-    
-    if (upSpeed < 1024) {
-        upSpeed = upSpeed.toFixed(0);
-        speed += upSpeed + " kB/s &#8593;";
-    }
-    else {
-        upSpeed = upSpeed / 1024;
-        upSpeed = upSpeed.toFixed(2);
-        speed += upSpeed + " mB/s &#8593;";
-    }
-	   
-    $(".stats-wrapper").html(speed);
+    var downSpeed = new Number(stats.arguments.downloadSpeed / SPEED_BYTES);
+    var upSpeed = new Number(stats.arguments.uploadSpeed / SPEED_BYTES);
+
+    $(".stats-wrapper").html(size_to_str(downSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8595; " + size_to_str(upSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8593;");
 }
 
 function updateTurtle() {
@@ -329,6 +298,7 @@ function update(event) {
         msg += 'go to the options page</a></div>';
         $("body").html(msg);
     }
+    // fired without event argument by document.ready
     else if (typeof event == "undefined") {
         buildList();
         updateSpeed();
