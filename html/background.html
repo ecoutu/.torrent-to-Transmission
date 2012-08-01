@@ -7,12 +7,12 @@
 var interval;
 
 chrome.contextMenus.create({
-    "title": "default path",
+    "title": ".torrent To Transmission",
     "contexts": ["link"],
     "onclick": torrentOnClick,
 });
 
-chrome.contextMenus.create({
+/*chrome.contextMenus.create({
     "type": "separator",
     "contexts": ["link"],
     "onclick": torrentOnClick,
@@ -22,7 +22,7 @@ chrome.contextMenus.create({
     "title": ".torrent to Transmission2",
     "contexts": ["link"],
     "onclick": torrentOnClick,
-});
+});*/
 
 /*
     Initial load.
