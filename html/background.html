@@ -7,7 +7,19 @@
 var interval;
 
 chrome.contextMenus.create({
-    "title": ".torrent to Transmission",
+    "title": "default path",
+    "contexts": ["link"],
+    "onclick": torrentOnClick,
+});
+
+chrome.contextMenus.create({
+    "type": "separator",
+    "contexts": ["link"],
+    "onclick": torrentOnClick,
+});
+
+chrome.contextMenus.create({
+    "title": ".torrent to Transmission2",
     "contexts": ["link"],
     "onclick": torrentOnClick,
 });
@@ -24,15 +36,7 @@ if (!localStorage.isInitialized) {
     localStorage.notificationDuration = 10;
     localStorage.refreshRate = 5;
     localStorage.selected_list = "all";
-    
-    var json = JSON.stringify({ "method": "session-get" });
-    rpc_request(json, function(req) {
-        if (req.status == 200) {
-            var rv = JSON.parse(req.response);
-            var rpc_version = rv.arguments["rpc-version"];
-            localStorage.setItem("rpc_version", rpc_version);
-        }
-    });
+    localStorage.setItem("enable-additional-paths", false);
     
     localStorage.isInitialized = true;
 }

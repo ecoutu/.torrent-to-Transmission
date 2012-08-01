@@ -5,6 +5,7 @@
     <title>.torrent to Transmission Options</title>
 
     <link rel="stylesheet" type="text/css" href="../css/options.css" />
+    <script type="text/javascript" src="../js/jquery-1.5.2.min.js"></script>
     <script type="text/javascript" src="../js/options.js"></script>
 </head>
 
@@ -52,7 +53,23 @@
             </table>
         </div>
     </div>
-
+    <div class="section">
+        <div class="header">Download Paths</div>
+        <div class="content">
+            <input type="checkbox" id="enable-additional-paths" /> Enable additional download locations
+            <table id="paths-table">
+                <tr>
+                    <th>Label</th>
+                    <th>Directory</th>
+                </tr>
+                <tr class="path-row">
+                    <td><input type="text" class="path-label" /></td>
+                    <td><input type="text" class="path-directory" /></td>
+                    <td><input type="button" value="Add" id="add-path" /></td>
+                </tr>
+            </table>
+        </div>
+    </div>
 
     <div class="footer">
         <input type="submit" value="Save" />

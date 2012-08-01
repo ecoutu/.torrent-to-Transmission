@@ -11,33 +11,96 @@ function init() {
     document.getElementById("notification-display").checked = JSON.parse(localStorage.displayNotification);
     document.getElementById("notification-duration").value = localStorage.notificationDuration || "";
     document.getElementById("refresh-rate").value = localStorage.refreshRate || "";
+    document.getElementById("enable-additional-paths").checked = JSON.parse(localStorage.getItem("enable-additional-paths"));
+    
+    var paths = JSON.parse(localStorage.getItem("additional-paths"));
+    var paths_table = $("#paths-table");
+    
+    for (path in paths) {
+        var new_row = $('\
+<tr class="path-row">\
+    <td><input type="text" class="path-label" /></td>\
+    <td><input type="text" class="path-directory" /></td>\
+    <td><input type="button" value="x" /></td>\
+</tr>'
+        );
+        $(new_row).find(".path-label").val(paths[path][0]);
+        $(new_row).find(".path-directory").val(paths[path][1]);
+        $(paths_table).append(new_row);
+        
+    }
+
     rpcTest();
     toggleNotification();
+    togglePaths();
     markClean();
 }
 
-window.onload = function() {
-    for (var i = 0, inputs = document.getElementsByTagName("input"); i < inputs.length; i++) {
-        if (inputs[i].type == "checkbox") {
-            
-        }
-        else if (inputs[i].type == "submit") {
-            saveButton = inputs[i];
-            saveButton.onclick = save;
-        }
-        else if (inputs[i].type == "reset") {
-            inputs[i].onclick = init;
-        }
-        else {
-            inputs[i].onkeydown = markDirty;
-        }
-    }
+$(document).ready(function() {
+    
+    saveButton = $('input[type="submit"]');
+    
+    $('input[type="submit"]').click(save);
+    $('input[type="reset"]').click(init);
+    $('input[type="checkbox"]').live('click', markDirty);
+    $('input[type="text"]').live('keydown', markDirty);
+
     document.getElementById("rpc-url").onchange = rpcTest;
     document.getElementById("rpc-user").onchange = rpcTest;
     document.getElementById("rpc-pass").onchange = rpcTest;
     document.getElementById("notification-display").onclick = toggleNotification;
+    document.getElementById("enable-additional-paths").onclick = togglePaths;
+
+    $('.path-row input[value="x"]').live('click', function() {
+        $(this).parent().parent().remove();
+    });
+
+    $('.path-row:first').find('.path-label').keypress(function() {
+        if ($('.path-row:first').find('.path-directory').val())
+            $('input#add-path').attr('disabled', '');
+        else
+            $('input#add-path').attr('disabled', 'disabled');
+    });
+    $('.path-row:first').find('.path-directory').keyup(function() {
+        if ($('.path-row:first').find('.path-directory').val())
+            $('input#add-path').attr('disabled', '');
+        else
+            $('input#add-path').attr('disabled', 'disabled');
+            
+    });
+
+    $("#add-path").click(function() {
+
+        var new_row = $('\
+<tr class="path-row">\
+    <td><input type="text" class="path-label" /></td>\
+    <td><input type="text" class="path-directory" /></td>\
+    <td><input type="button" value="x" /></td>\
+</tr>'
+        );
+        var parent_row = $(this).parent().parent();
+        var new_label = "";
+        var new_dir = "";
+        
+        new_label = parent_row.find(".path-label").val();
+        new_dir = parent_row.find(".path-directory").val();
+        
+        if (!new_label && !new_dir)
+            return;
+        else if (!new_dir)
+            return;
+
+        $(new_row).find(".path-label").val(new_label);
+        $(new_row).find(".path-directory").val(new_dir);
+        
+        $(parent_row).find(".path-label").val("");
+        $(parent_row).find(".path-directory").val("");
+        
+        $(this).parent().parent().after(new_row);
+    });
     init();
-};
+    $('input#add-path').attr('disabled', 'disabled');
+});
 
 function rpcTest() {
     var json = JSON.stringify({ "method": "session-get" });
@@ -53,6 +116,8 @@ function rpcTest() {
 }
 
 function save() {
+    var paths = [];
+
     localStorage.setItem("rpcURL", document.getElementById("rpc-url").value);
     localStorage.setItem("webURL", document.getElementById("web-url").value);
     localStorage.setItem("rpcUser", document.getElementById("rpc-user").value);
@@ -61,19 +126,50 @@ function save() {
     localStorage.setItem("notificationDuration", document.getElementById("notification-duration").value);
     localStorage.setItem("refreshRate", document.getElementById("refresh-rate").value);
     localStorage.setItem("rpc_version", rpc_version);
+    localStorage.setItem("enable-additional-paths", document.getElementById("enable-additional-paths").checked);
+    
+    var rows = $(".path-row").not(":first");
+    
+    $(rows).each(function() {
+        var label = $(this).find('.path-label').val();
+        var dir = $(this).find('.path-directory').val();
+        
+        paths.push([label, dir]);
+    });
+
+    localStorage.setItem('additional-paths', JSON.stringify(paths));
+    
     markClean();
 }
 
 function markDirty() {
-    saveButton.disabled = false;
+    saveButton.attr("disabled", false);
 }
 
 function markClean() {
-    saveButton.disabled = true;
+    saveButton.attr("disabled", true);
+}
+
+function togglePaths() {
+    var inputs = document.getElementById("paths-table").getElementsByTagName("input");
+    var ths = document.getElementById("paths-table").getElementsByTagName("th");
+    
+    for (var i = 0; i < inputs.length; i++)
+        inputs[i].disabled = !document.getElementById("enable-additional-paths").checked;
+        
+    for (var i = 0; i < ths.length; i++) {
+        if (document.getElementById("enable-additional-paths").checked)
+            ths[i].className = "";
+        else
+            ths[i].className = "text-disabled";
+    }
+        
+    markDirty();
 }
 
 function toggleNotification() {
     var inputs = document.getElementById("notification-table").getElementsByTagName("input");
+
     for (var i = 0; i < inputs.length; i++)
         inputs[i].disabled = !document.getElementById("notification-display").checked;
     markDirty();

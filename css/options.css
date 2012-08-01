@@ -6,12 +6,12 @@ body, td {
 
 h1.header {
     font-size: 156%;
-    padding-bottom:43px;
-    padding-left:75px;
-    padding-top:40px;
-    background:url(../img/icon-small.png) no-repeat;
-    background-size:67px;
-    background-position:1px 18px;
+    padding-bottom: 43px;
+    padding-left: 75px;
+    padding-top: 40px;
+    background: url(../img/icon-small.png) no-repeat;
+    background-size: 67px;
+    background-position: 1px 18px;
 }
 
 .section {
@@ -19,19 +19,33 @@ h1.header {
 }
 
 .section .header {
-    background:#ebeff9;
-    border-top:1px solid #b5c7de;
-    font-size:99%;
-    padding:3px 0 2px 5px;
-    font-weight:bold;
+    background: #ebeff9;
+    border-top: 1px solid #b5c7de;
+    font-size: 99%;
+    padding: 3px 0 2px 5px;
+    font-weight: bold;
     margin-bottom: 1em;
+}
+
+td.field input {
+    width: 25em;
 }
 
 td.label {
     width: 20em;
 }
-td input {
-    width: 25em;
+
+table#paths-table {
+    margin-top: 1em;
+    margin-left: 1em;
+}
+
+input.path-label {
+    width: 15em;
+}
+
+input.path-directory {
+    width: 24em;
 }
 
 #notification-table {
@@ -60,4 +74,8 @@ input[type = submit] {
 }
 .error {
     color: red;
+}
+
+.text-disabled {
+    color: grey;
 }

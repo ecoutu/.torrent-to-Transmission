@@ -202,6 +202,30 @@ function update_session() {
     });
     rpc_request(json, function(req) {
         localStorage.setItem("session-info", req.responseText);
+        try {
+            localStorage.setItem("rpc_version", JSON.parse(req.response).arguments["rpc-version"]);
+            if (localStorage.getItem("rpc_version") == 14) {
+                TR_STATUS_STOPPED = 0;
+                TR_STATUS_CHECK_WAIT = 1;
+                TR_STATUS_CHECK = 2;
+                TR_STATUS_DOWNLOAD_WAIT = 3;
+                TR_STATUS_DOWNLOAD = 4;
+                TR_STATUS_SEED_WAIT = 5;
+                TR_STATUS_SEED = 6;
+            }
+            else {
+                TR_STATUS_STOPPED = 16;
+                TR_STATUS_CHECK_WAIT = 1;
+                TR_STATUS_CHECK = 2;
+                TR_STATUS_DOWNLOAD_WAIT = 0;
+                TR_STATUS_DOWNLOAD = 4;
+                TR_STATUS_SEED_WAIT = 0;
+                TR_STATUS_SEED = 8;
+            }
+        }
+        catch (err) {
+        
+        }
     });
 }
 
