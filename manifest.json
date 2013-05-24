@@ -21,5 +21,8 @@
         "default_icon": "img/icon-bitty.png",
         "default_title": ".torrent to Transmission",
         "default_popup": "html/list.html"
-    }
+    },
+    "web_accessible_resources": [
+        "img/icon-small.png"
+    ]
 }
