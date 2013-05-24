@@ -2,16 +2,7 @@ var port = chrome.extension.connect({ name: "list" });
 
 var RPC_VERSION = localStorage.getItem("rpc_version");
 
-if (RPC_VERSION == 14) {
-    var TR_STATUS_STOPPED = 0;
-    var TR_STATUS_CHECK_WAIT = 1;
-    var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 3;
-    var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 5;
-    var TR_STATUS_SEED = 6;
-}
-else {
+if (localStorage.getItem("rpc_version") < 14) {
     var TR_STATUS_STOPPED = 16;
     var TR_STATUS_CHECK_WAIT = 1;
     var TR_STATUS_CHECK = 2;
@@ -19,6 +10,15 @@ else {
     var TR_STATUS_DOWNLOAD = 4;
     var TR_STATUS_SEED_WAIT = 0;
     var TR_STATUS_SEED = 8;
+}
+else {
+    var TR_STATUS_STOPPED = 0;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 3;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 5;
+    var TR_STATUS_SEED = 6;
 }
 
 var SIZE_PREFIX = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["size-units"];

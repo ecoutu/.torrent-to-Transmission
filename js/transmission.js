@@ -1,15 +1,6 @@
 var TAGNO = 12345;
 
-if (localStorage.getItem("rpc_version") == 14) {
-    var TR_STATUS_STOPPED = 0;
-    var TR_STATUS_CHECK_WAIT = 1;
-    var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 3;
-    var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 5;
-    var TR_STATUS_SEED = 6;
-}
-else {
+if (localStorage.getItem("rpc_version") < 14) {
     var TR_STATUS_STOPPED = 16;
     var TR_STATUS_CHECK_WAIT = 1;
     var TR_STATUS_CHECK = 2;
@@ -17,6 +8,15 @@ else {
     var TR_STATUS_DOWNLOAD = 4;
     var TR_STATUS_SEED_WAIT = 0;
     var TR_STATUS_SEED = 8;
+}
+else {
+    var TR_STATUS_STOPPED = 0;
+    var TR_STATUS_CHECK_WAIT = 1;
+    var TR_STATUS_CHECK = 2;
+    var TR_STATUS_DOWNLOAD_WAIT = 3;
+    var TR_STATUS_DOWNLOAD = 4;
+    var TR_STATUS_SEED_WAIT = 5;
+    var TR_STATUS_SEED = 6;
 }
 
 function rpc_request(json, callback, url, user, pass) {
@@ -143,28 +143,16 @@ function update_torrents() {
             if (torrent.id in torrents)
                 lastStatus = torrents[torrent.id].status;
 
-            switch (torrent.status) {
-                case TR_STATUS_CHECK_WAIT:  // queued to check files
-                    break;
-                case TR_STATUS_CHECK:  // checking files
-                    break;
-                case TR_STATUS_DOWNLOAD:  // downloading
-                    nDLs += 1;
-                    break;
-                case TR_STATUS_DOWNLOAD_WAIT:  // queued
-                    break;
-                case TR_STATUS_SEED_WAIT: // queued to seed
-                    break;
-                case TR_STATUS_SEED:  // seeding
-                    nULs += 1;
-                    break;
-                case TR_STATUS_STOPPED: // stopped
-                    if (torrent.status != lastStatus && lastStatus == TR_STATUS_DOWNLOAD && torrent.leftUntilDone == 0)
-                        showNotification("torrent complete", torrent.name);
-                    break;
-                default:
-                    break;
+            if (torrent.status != lastStatus && lastStatus == TR_STATUS_DOWNLOAD && torrent.leftUntilDone == 0)
+                showNotification("torrent complete", torrent.name);
+
+            if (torrent.status == TR_STATUS_DOWNLOAD) {
+                nDLs += 1;
             }
+            else if (torrent.status == TR_STATUS_SEED) {
+                nULs += 1;
+            }
+
             remTorrents[torrent.id] = torrent;
         }
         
