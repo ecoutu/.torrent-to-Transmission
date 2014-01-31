@@ -31,6 +31,7 @@ function rpc_request(json, callback, url, user, pass) {
 
     req.open("POST", url, true, user, pass);
     req.setRequestHeader("X-Transmission-Session-Id", localStorage.sessionId);
+    req.setRequestHeader("Authorization", "Basic " + btoa(user + ":" + pass))
     req.setRequestHeader("Content-Type", "application/json");
 
     req.onreadystatechange = function() {
