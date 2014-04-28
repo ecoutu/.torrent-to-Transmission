@@ -29,23 +29,23 @@ var SPEED_BYTES = JSON.parse(localStorage.getItem("session-info"))["arguments"][
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
     as the name attribute of elements with the CSS .list-item class.
-    
+
     Returns a list of IDs.
 */
 function getIds() {
     var ids = [];
-    
+
     $(".list-item").each(function () {
         ids.push(JSON.parse($(this).attr("name")));
     });
-    
+
     return ids;
 }
 
 function size_to_str(size, units, unit_size) {
     var size_str = size.toFixed(0);
     var unit_str = "";
-    
+
     for (var i = 0; i < units.length; i++) {
         if (size < unit_size) {
             unit_str = units[i];
@@ -56,15 +56,15 @@ function size_to_str(size, units, unit_size) {
             size_str = size.toFixed(2);
         }
     }
-    
+
     return size_str + " " + unit_str;
 }
 
 $(document).ready(function() {
     var selectedList;
-    
+
     selectedList = localStorage.getItem("selected_list");
-   
+
     $(".navitem").click(function () {
         selectedList = $(this).attr("name");
         $(".navitem.selected").removeClass("selected");
@@ -72,11 +72,11 @@ $(document).ready(function() {
         localStorage.setItem("selected_list", selectedList);
         buildList(selectedList);
     });
-    
+
     $(".navitem[name = \"" + selectedList + "\"]").addClass("selected");
-    
+
     update();
-    
+
     $(".button").live("click", function() {
         var req = {
             "arguments": { }
@@ -102,22 +102,22 @@ $(document).ready(function() {
             "json": JSON.stringify(req)
         });
     });
-    
+
     $(".turtle").click(function(event) {
         var req = {
             "method": "session-set",
             "arguments": { }
         };
         var turtle_status = $(".turtle").hasClass("on");
-        
+
         req.arguments["alt-speed-enabled"] = !turtle_status;
-        
+
         port.postMessage({
             "method": "rpc-call",
             "json": JSON.stringify(req)
         });
     });
-    
+
     $(".webui").html('<a href="' + localStorage.getItem("webURL") + '" target="_blank">WebUI</a>');
 });
 
@@ -131,11 +131,11 @@ function createListItem(torrent) {
     var dlSpeed = new Number(torrent.rateDownload / SPEED_BYTES);
     var ulSpeed = new Number(torrent.rateUpload / SPEED_BYTES);
     var classes = '';
-    
+
     rv += '<div class="list-item" name="' + torrent.id +'">';
     rv += '<div class="name">' + torrent.name + '</div>';
     rv += '<div class="clear"></div>';
-    
+
     // queue buttons if RPC supports it
     if (RPC_VERSION == 14)
         rv += '<div class="button queue-up torrent"></div><div class="button queue-down torrent"></div>';
@@ -152,16 +152,16 @@ function createListItem(torrent) {
         classes += ' verifying';
     else
         classes += ' paused';
-    
+
     // add custom class for progress bar if RPC supports queue
     if (RPC_VERSION == 14)
         classes += ' v14';
-        
+
     rv += '<div class="' + classes + '">';
-    
+
     rv += '<hr style="width: ' + Math.round(torrent.percentDone * 100) + '%;"></hr>';
     rv += '</div>';
-    
+
     // build pause/resume button
     if (torrent.status == TR_STATUS_STOPPED)
         rv += '<div class="button resume torrent"></div>';
@@ -169,7 +169,7 @@ function createListItem(torrent) {
         rv += '<div class="button pause torrent"></div>';
     rv += '<div class="button remove torrent"></div>';
     rv += '<div class="clear"></div>';
-    
+
     // build status info bar
     if (torrent.error == 3) {
         rv += '<div>' + "Data not found" + '</div>';
@@ -194,15 +194,15 @@ function createListItem(torrent) {
         var percent_done = new Number(torrent.percentDone * 100).toFixed(2);
         var size_str = '', finish_str = '';
         var eta_str = '';
-        
+
         size_bytes = size_bytes / SIZE_BYTES;
         finished_bytes = finished_bytes / SIZE_BYTES;
 
         size_str = size_to_str(size_bytes, SIZE_PREFIX, SIZE_BYTES);
         finish_str = size_to_str(finished_bytes, SIZE_PREFIX, SIZE_BYTES);
-        
+
         if (eta < 0) {
-            eta_str = ''; 
+            eta_str = '';
         }
         else if (eta < 60) {
             eta_str = new Number(eta) + ' seconds';
@@ -221,7 +221,7 @@ function createListItem(torrent) {
         }
 
         rv += '<div class="status-wrapper">';
-        
+
         if (torrent.status == TR_STATUS_DOWNLOAD) {
             rv += finish_str + ' of ' + size_str + ' (' + percent_done + '%)';
             if (eta > 0)
@@ -241,15 +241,15 @@ function createListItem(torrent) {
         rv += '<div class="clear"></div>';
     }
     rv += '</div>';
-    
+
     return rv;
 }
 
 function buildList() {
     var list = localStorage.getItem("selected_list");
-    var torrents = JSON.parse(localStorage.getItem("torrents"));      
+    var torrents = JSON.parse(localStorage.getItem("torrents"));
     var sortable = [];
-    
+
     for (var id in torrents) {
         var torrent = torrents[id];
         if ((list == "all") ||
@@ -264,9 +264,9 @@ function buildList() {
     sortable.sort(function(a, b) {
         return a.queuePosition - b.queuePosition;
     });
-    
+
     $(".list-wrapper").empty();
-    
+
     for (var i in sortable) {
         $(".list-wrapper").append(createListItem(sortable[i]));
     }

@@ -21,7 +21,7 @@ else {
 
 function rpc_request(json, callback, url, user, pass) {
     var req = new XMLHttpRequest();
-    
+
     if (typeof url == "undefined")
         url = localStorage.rpcURL;
     if (typeof user == "undefined")
@@ -49,7 +49,7 @@ function rpc_request(json, callback, url, user, pass) {
 
 function add_torrent(link_url) {
     var json;
-    
+
     // request
     json = JSON.stringify({
         "method": "torrent-add",
@@ -88,7 +88,7 @@ function add_torrent(link_url) {
                 showNotification(title, text);
             }
         } catch (err) {
-            
+
         }
     });
 }
@@ -124,7 +124,7 @@ function update_torrents() {
         var remTorrents = { };
         var nDLs = 0, nULs = 0;
         var badgeText = "";
-        
+
         try {
             var rv = JSON.parse(req.responseText);
             chrome.browserAction.setIcon({ "path": "../img/icon-bitty.png" })
@@ -134,8 +134,8 @@ function update_torrents() {
             chrome.browserAction.setBadgeBackgroundColor({ "color": "#7f7f7f" });
             chrome.browserAction.setIcon({ "path": "../img/icon-grey-bitty.png" })
             return;
-        }        
-        
+        }
+
         for (var i = 0; i < rv.arguments.torrents.length; i++) {
             var torrent = rv.arguments.torrents[i];
             var lastStatus = torrent.status;
@@ -155,14 +155,14 @@ function update_torrents() {
 
             remTorrents[torrent.id] = torrent;
         }
-        
+
         if (nDLs < 10)
             badgeText = nDLs;
         else
             badgeText = "*";
-            
+
         badgeText += "/";
-        
+
         if (nULs < 10)
             badgeText += nULs;
         else
@@ -170,7 +170,7 @@ function update_torrents() {
         chrome.browserAction.setBadgeText({ "text": badgeText });
 
         localStorage.setItem("torrents", JSON.stringify(remTorrents));
-    });   
+    });
 }
 
 function update_stats() {
@@ -212,7 +212,7 @@ function update_session() {
             }
         }
         catch (err) {
-        
+
         }
     });
 }

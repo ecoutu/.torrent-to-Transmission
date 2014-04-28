@@ -31,7 +31,7 @@ if (!localStorage.isInitialized) {
     localStorage.refreshRate = 5;
     localStorage.selected_list = "all";
     localStorage.setItem("enable-additional-paths", false);
-    
+
     localStorage.isInitialized = true;
 }
 
