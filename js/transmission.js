@@ -65,10 +65,12 @@ function add_torrent(link_url) {
             if (localStorage.getItem("lastStatus") == 200) {
                 // received response, notify if added or not
                 var rv = JSON.parse(req.responseText);
-                if (rv["result"] == "success")
+                if (rv["result"] == "success") {
                     showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
-                else
+                }
+                else {
                     showNotification("failed to start torrent", rv["result"]);
+                }
             }
             else {
                 // unable to contact server

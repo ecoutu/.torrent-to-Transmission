@@ -23,6 +23,6 @@
         "default_popup": "html/list.html"
     },
     "web_accessible_resources": [
-        "img/icon-small.png"
+        "img/icon-large.png"
     ]
 }
