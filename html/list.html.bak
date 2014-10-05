@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="../css/list.css" />
+    <script type="text/javascript" src="../js/jquery-1.5.2.min.js"></script>
+    <script type="text/javascript" src="../js/list.js"></script>
+</head>
+<body>
+    <div class="button wrapper pause all"><div></div>Pause All</div>
+    <div class="button wrapper resume all"><div></div>Resume All</div>
+    <div class="clear"></div>
+    <div class="navitem" name="all">All</div>
+    <div class="navitem" name="download">Downloading</div>
+    <div class="navitem" name="seed">Seeding</div>
+    <div class="navitem" name="pause">Paused</div>
+    <div class="clear"></div>
+    <div class="list-wrapper"></div>
+    <div class="bottom navbar">
+        &nbsp;
+        <div class="link-wrapper">
+            <a target="_blank" class="button wrapper webui">WebUI</a>
+        </div>
+        <img class="turtle on"></img>
+        <div class="stats-wrapper"></div>
+    </div>
+</body>
+</html>
