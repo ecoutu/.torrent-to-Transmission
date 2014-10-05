@@ -6,10 +6,11 @@
     "permissions": [
         "contextMenus",
         "notifications",
+        "storage",
         "http://*/"
     ],
     "background": {
-        "page": "html/background.html"
+        "page": "background.html"
     },
     "options_page": "html/options.html",
     "icons": {

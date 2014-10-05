@@ -1,0 +1,22 @@
+{
+  "name": ".torrent-to-Transmission",
+  "version": "0.5.8",
+  "authors": [
+    "Eric Coutu <eric.coutu@gmail.com>"
+  ],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "requirejs": "~2.1.14",
+    "jquery": "~2.1.1",
+    "underscore": "~1.7.0",
+    "backbone": "~1.1.2",
+    "rsvp": "~3.0.13"
+  }
+}
