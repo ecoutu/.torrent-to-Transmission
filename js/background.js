@@ -44,7 +44,10 @@ chrome.extension.onConnect.addListener(function(port) {
                 rpc_request(msg.json, function(req) {
                     port.postMessage({
                         "method": "rpc-test",
-                        "req": req
+                        "req": {
+                            "status": req.status,
+                            "responseText": req.responseText
+                        }
                     });
                 }, msg.url, msg.user, msg.pass);
             }
