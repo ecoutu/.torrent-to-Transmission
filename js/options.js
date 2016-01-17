@@ -12,6 +12,7 @@ function init() {
     document.getElementById("notification-duration").value = localStorage.notificationDuration || "";
     document.getElementById("refresh-rate").value = localStorage.refreshRate || "";
     document.getElementById("enable-additional-paths").checked = JSON.parse(localStorage.getItem("enable-additional-paths"));
+    document.getElementById("use-metainfo").checked = JSON.parse(localStorage.useMetainfo);
     
     var paths = JSON.parse(localStorage.getItem("additional-paths"));
     var paths_table = $("#paths-table");
@@ -127,6 +128,7 @@ function save() {
     localStorage.setItem("refreshRate", document.getElementById("refresh-rate").value);
     localStorage.setItem("rpc_version", rpc_version);
     localStorage.setItem("enable-additional-paths", document.getElementById("enable-additional-paths").checked);
+    localStorage.setItem("useMetainfo", document.getElementById("use-metainfo").checked);
     
     var rows = $(".path-row").not(":first");
     

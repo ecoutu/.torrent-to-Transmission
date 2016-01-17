@@ -1,5 +1,11 @@
 var TAGNO = 12345;
 
+if (typeof String.prototype.startsWith != 'function') {
+    String.prototype.startsWith = function(str) {
+        return this.indexOf(str) == 0;
+    };
+}
+
 if (localStorage.getItem("rpc_version") < 14) {
     var TR_STATUS_STOPPED = 16;
     var TR_STATUS_CHECK_WAIT = 1;
@@ -48,6 +54,83 @@ function rpc_request(json, callback, url, user, pass) {
 }
 
 function add_torrent(link_url) {
+    var magnertUrl = link_url.startsWith("magnet:");
+    var useMetainfo = JSON.parse(localStorage.useMetainfo);
+    if (magnertUrl || !useMetainfo) {
+        add_torrent_by_url(link_url);
+    }
+    else {
+        add_torrent_by_metainfo(link_url);
+    }
+}
+
+function add_torrent_by_metainfo(link_url) {
+    var json;
+    var xmlhttp = new XMLHttpRequest();
+    xmlhttp.responseType = "arraybuffer";
+    xmlhttp.onreadystatechange = function() {
+        if (xmlhttp.readyState == 4) {
+            var good = false;
+            if (xmlhttp.status == 200) {
+                var arrayBuffer = xmlhttp.response;
+                if (arrayBuffer) {
+                    var base64 = base64EncArr(new Uint8Array(arrayBuffer));
+                    json = JSON.stringify({
+                        "method": "torrent-add",
+                        "arguments": {
+                            "metainfo": base64,
+                            "paused": false
+                        },
+                        "tag": TAGNO
+                    });
+                    rpc_request(json, function(req) {
+                        try {
+                            if (localStorage.getItem("lastStatus") == 200) {
+                                // received response, notify if added or
+                                // not
+                                var rv = JSON.parse(req.responseText);
+                                if (rv["result"] == "success") {
+                                    showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
+                                }
+                                else {
+                                    showNotification("failed to start torrent", rv["result"]);
+                                }
+                            }
+                            else {
+                                // unable to contact server
+                                var title = "unable to contact " + localStorage.getItem("rpcURL");
+                                var text = "";
+                                switch (JSON.parse(localStorage.getItem("lastStatus"))) {
+                                    case 0:
+                                        text = "no response";
+                                        break;
+                                    case 401:
+                                        text = "invalid username/password";
+                                        break;
+                                    default:
+                                        text = "unrecognized response";
+                                        break;
+                                }
+                                showNotification(title, text);
+                            }
+                        }
+                        catch (err) {
+
+                        }
+                    });
+                    good = true;
+                }
+            }
+            if (!good) {
+                showNotification("use metainfo fail", "can't retrieve metainfo of torrent");
+            }
+        }
+    }
+    xmlhttp.open("GET", link_url, true)
+    xmlhttp.send();
+}
+
+function add_torrent_by_url(link_url) {
     var json;
 
     // request
@@ -223,4 +306,34 @@ function update() {
     update_session();
     update_stats();
     update_torrents();
+}
+
+/* Base64 string to array encoding */
+
+function uint6ToB64(nUint6) {
+
+    return nUint6 < 26 ? nUint6 + 65 : nUint6 < 52 ? nUint6 + 71 : nUint6 < 62 ? nUint6 - 4 : nUint6 === 62 ? 43
+            : nUint6 === 63 ? 47 : 65;
+
+}
+
+function base64EncArr(aBytes) {
+
+    var nMod3 = 2, sB64Enc = "";
+
+    for (var nLen = aBytes.length, nUint24 = 0, nIdx = 0; nIdx < nLen; nIdx++) {
+        nMod3 = nIdx % 3;
+        if (nIdx > 0 && (nIdx * 4 / 3) % 76 === 0) {
+            sB64Enc += "\r\n";
+        }
+        nUint24 |= aBytes[nIdx] << (16 >>> nMod3 & 24);
+        if (nMod3 === 2 || aBytes.length - nIdx === 1) {
+            sB64Enc += String.fromCharCode(uint6ToB64(nUint24 >>> 18 & 63), uint6ToB64(nUint24 >>> 12 & 63),
+                    uint6ToB64(nUint24 >>> 6 & 63), uint6ToB64(nUint24 & 63));
+            nUint24 = 0;
+        }
+    }
+
+    return sB64Enc.substr(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? '' : nMod3 === 1 ? '=' : '==');
+
 }
