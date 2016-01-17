@@ -68,7 +68,7 @@ div.wrapper {
 input[type = submit] {
     font-weight : bold;
 }
-.result {
+.result, .details {
     color: #777;
     font-size: 11px;
 }

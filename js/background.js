@@ -29,6 +29,7 @@ if (!localStorage.isInitialized) {
     localStorage.displayNotification = true;
     localStorage.notificationDuration = 10;
     localStorage.refreshRate = 5;
+    localStorage.sendTorrentFile = false;
     localStorage.selected_list = "all";
     localStorage.setItem("enable-additional-paths", false);
 

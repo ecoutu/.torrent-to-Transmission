@@ -48,50 +48,73 @@ function rpc_request(json, callback, url, user, pass) {
 }
 
 function add_torrent(link_url) {
-    var json;
+    new Promise(function(resolve, reject) {
+        var isMagnet = /^magnet:/.test(link_url);
+        var sendTorrentFile = JSON.parse(localStorage.sendTorrentFile);
 
-    // request
-    json = JSON.stringify({
-        "method": "torrent-add",
-        "arguments": {
-            "filename": link_url,
-            "paused": false
-        },
-        "tag": TAGNO
-    });
-
-    rpc_request(json, function(req) {
-        try {
-            if (localStorage.getItem("lastStatus") == 200) {
-                // received response, notify if added or not
-                var rv = JSON.parse(req.responseText);
-                if (rv["result"] == "success") {
-                    showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
+        if (isMagnet || !sendTorrentFile) {
+            resolve({
+                "method": "torrent-add",
+                "arguments": {
+                    "filename": link_url,
+                    "paused": false
+                },
+                "tag": TAGNO
+            });
+        } else {
+            var req = new XMLHttpRequest();
+            req.responseType = 'arraybuffer';
+            req.open('GET', link_url, true);
+            req.onreadystatechange = function () {
+                if (req.readyState == 4) {
+                    var base64 = base64EncArr(new Uint8Array(req.response));
+                    //debugger;
+                    resolve({
+                        "method": "torrent-add",
+                        "arguments": {
+                            "metainfo": base64,
+                            "paused": false
+                        },
+                        "tag": TAGNO
+                    });
+                }
+            };
+            req.send();
+        }
+    }).then(function(json) {
+        rpc_request(JSON.stringify(json), function (req) {
+            try {
+                if (localStorage.getItem("lastStatus") == 200) {
+                    // received response, notify if added or not
+                    var rv = JSON.parse(req.responseText);
+                    if (rv["result"] == "success") {
+                        showNotification("torrent started", rv["arguments"]["torrent-added"]["name"]);
+                    }
+                    else {
+                        showNotification("failed to start torrent", rv["result"]);
+                    }
                 }
                 else {
-                    showNotification("failed to start torrent", rv["result"]);
+                    // unable to contact server
+                    var title = "unable to contact " + localStorage.getItem("rpcURL");
+                    var text = "";
+                    switch (JSON.parse(localStorage.getItem("lastStatus"))) {
+                        case 0:
+                            text = "no response";
+                            break;
+                        case 401:
+                            text = "invalid username/password";
+                            break;
+                        default:
+                            text = "unrecognized response";
+                            break;
+                    }
+                    showNotification(title, text);
                 }
+            } catch (err) {
+                console.error(err, err.stack);
             }
-            else {
-                // unable to contact server
-                var title = "unable to contact " + localStorage.getItem("rpcURL");
-                var text = "";
-                switch (JSON.parse(localStorage.getItem("lastStatus"))) {
-                    case 0:
-                        text = "no response";
-                        break;
-                    case 401:
-                        text = "invalid username/password";
-                        break;
-                    default:
-                        text = "unrecognized response";
-                        break;
-                }
-                showNotification(title, text);
-            }
-        } catch (err) {
-
-        }
+        });
     });
 }
 
@@ -223,4 +246,34 @@ function update() {
     update_session();
     update_stats();
     update_torrents();
+}
+
+/* Base64 string to array encoding */
+
+function uint6ToB64(nUint6) {
+
+    return nUint6 < 26 ? nUint6 + 65 : nUint6 < 52 ? nUint6 + 71 : nUint6 < 62 ? nUint6 - 4 : nUint6 === 62 ? 43
+      : nUint6 === 63 ? 47 : 65;
+
+}
+
+function base64EncArr(aBytes) {
+
+    var nMod3 = 2, sB64Enc = "";
+
+    for (var nLen = aBytes.length, nUint24 = 0, nIdx = 0; nIdx < nLen; nIdx++) {
+        nMod3 = nIdx % 3;
+        if (nIdx > 0 && (nIdx * 4 / 3) % 76 === 0) {
+            sB64Enc += "\r\n";
+        }
+        nUint24 |= aBytes[nIdx] << (16 >>> nMod3 & 24);
+        if (nMod3 === 2 || aBytes.length - nIdx === 1) {
+            sB64Enc += String.fromCharCode(uint6ToB64(nUint24 >>> 18 & 63), uint6ToB64(nUint24 >>> 12 & 63),
+              uint6ToB64(nUint24 >>> 6 & 63), uint6ToB64(nUint24 & 63));
+            nUint24 = 0;
+        }
+    }
+
+    return sB64Enc.substr(0, sB64Enc.length - 2 + nMod3) + (nMod3 === 2 ? '' : nMod3 === 1 ? '=' : '==');
+
 }

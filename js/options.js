@@ -11,6 +11,7 @@ function init() {
     document.getElementById("notification-display").checked = JSON.parse(localStorage.displayNotification);
     document.getElementById("notification-duration").value = localStorage.notificationDuration || "";
     document.getElementById("refresh-rate").value = localStorage.refreshRate || "";
+    document.getElementById("send-torrent-file").checked = JSON.parse(localStorage.sendTorrentFile);
     document.getElementById("enable-additional-paths").checked = JSON.parse(localStorage.getItem("enable-additional-paths"));
     
     var paths = JSON.parse(localStorage.getItem("additional-paths"));
@@ -125,6 +126,7 @@ function save() {
     localStorage.setItem("displayNotification", document.getElementById("notification-display").checked);
     localStorage.setItem("notificationDuration", document.getElementById("notification-duration").value);
     localStorage.setItem("refreshRate", document.getElementById("refresh-rate").value);
+    localStorage.setItem("sendTorrentFile", document.getElementById("send-torrent-file").checked);
     localStorage.setItem("rpc_version", rpc_version);
     localStorage.setItem("enable-additional-paths", document.getElementById("enable-additional-paths").checked);
     
