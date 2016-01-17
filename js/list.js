@@ -21,10 +21,16 @@ else {
     var TR_STATUS_SEED = 6;
 }
 
-var SIZE_PREFIX = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["size-units"];
-var SPEED_PREFIX = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["speed-units"];
-var SIZE_BYTES = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["size-bytes"];
-var SPEED_BYTES = JSON.parse(localStorage.getItem("session-info"))["arguments"]["units"]["speed-bytes"];
+try {
+    var SESSION_INFO = JSON.parse(localStorage.getItem("session-info"));
+    var SIZE_PREFIX = SESSION_INFO["arguments"]["units"]["size-units"];
+    var SPEED_PREFIX = SESSION_INFO["arguments"]["units"]["speed-units"];
+    var SIZE_BYTES = SESSION_INFO["arguments"]["units"]["size-bytes"];
+    var SPEED_BYTES = SESSION_INFO["arguments"]["units"]["speed-bytes"];
+} catch(err) {
+    console.warn('Session info not available', err, err.stack);
+}
+
 
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
