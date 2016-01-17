@@ -21,20 +21,54 @@ chrome.contextMenus.create({
 /*
     Initial load.
 */
-if (!localStorage.isInitialized) {
-    localStorage.rpcUser = "";
-    localStorage.rpcPass = "";
-    localStorage.rpcURL = "http://localhost:9091/transmission/rpc";
-    localStorage.webURL = "http://localhost:9091";
-    localStorage.displayNotification = true;
-    localStorage.notificationDuration = 10;
-    localStorage.refreshRate = 5;
-    localStorage.sendTorrentFile = false;
-    localStorage.selected_list = "all";
-    localStorage.setItem("enable-additional-paths", false);
+var options = [
+    {
+        key: 'rpcUser',
+        default: ''
+    },
+    {
+        key: 'rpcPass',
+        default: ''
+    },
+    {
+        key: 'rpcURL',
+        default: 'http://localhost:9091/transmission/rpc'
+    },
+    {
+        key: 'webURL',
+        default: 'http://localhost:9091'
+    },
+    {
+        key: 'displayNotification',
+        default: true
+    },
+    {
+        key: 'notificationDuration',
+        default: 10
+    },
+    {
+        key: 'refreshRate',
+        default: 5
+    },
+    {
+        key: 'sendTorrentFile',
+        default: false
+    },
+    {
+        key: 'selected_list',
+        default: 'all'
+    },
+    {
+        key: 'enable-additional-paths',
+        default: false
+    }
+];
 
-    localStorage.isInitialized = true;
-}
+options.forEach(function(configItem) {
+   if (localStorage[configItem.key] === undefined) {
+       localStorage[configItem.key] = configItem.default;
+   }
+});
 
 interval = setInterval(update, localStorage.refreshRate * 1000);
 
