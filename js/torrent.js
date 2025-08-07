@@ -5,26 +5,34 @@
     text: notification text
 */
 function showNotification(title, text) {
-    // timeout stored from options
-    var timeout = localStorage.notificationDuration;
-
-    // notifications disabled
-    if (!JSON.parse(localStorage.displayNotification)) {
-        console.log('notifications disabled');
-        return;
-    }
-
-    chrome.notifications.create(
-        new Date().getTime().toString(),
-        {
-            type: "basic",
-            iconUrl: "../img/icon-large.png",
-            title: title,
-            message: text
-        }, function(id) {
-            console.log(id);
+    chrome.storage.local.get(['displayNotification', 'notificationDuration'], function(items) {
+        // notifications disabled
+        if (!items.displayNotification) {
+            console.log('notifications disabled');
+            return;
         }
-    );
+
+        var notID = new Date().getTime().toString();
+        chrome.notifications.create(
+            notID,
+            {
+                type: "basic",
+                iconUrl: chrome.runtime.getURL("img/icon-large.png"),
+                title: title,
+                message: text
+            }, function(id) {
+                console.log(id);
+            }
+        );
+
+        // timeout stored from options
+        var timeout = items.notificationDuration;
+        if (timeout) {
+            setTimeout(function() {
+                chrome.notifications.clear(notID);
+            }, timeout * 1000);
+        }
+    });
 }
 
 /*

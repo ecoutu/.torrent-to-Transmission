@@ -1,36 +1,64 @@
-var port = chrome.extension.connect({ name: "list" });
+var port = chrome.runtime.connect({ name: "list" });
 
-var RPC_VERSION = localStorage.getItem("rpc_version");
+var RPC_VERSION;
+var TR_STATUS_STOPPED;
+var TR_STATUS_CHECK_WAIT;
+var TR_STATUS_CHECK;
+var TR_STATUS_DOWNLOAD_WAIT;
+var TR_STATUS_DOWNLOAD;
+var TR_STATUS_SEED_WAIT;
+var TR_STATUS_SEED;
+var SESSION_INFO;
+var SIZE_PREFIX;
+var SPEED_PREFIX;
+var SIZE_BYTES;
+var SPEED_BYTES;
 
-if (localStorage.getItem("rpc_version") < 14) {
-    var TR_STATUS_STOPPED = 16;
-    var TR_STATUS_CHECK_WAIT = 1;
-    var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 0;
-    var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 0;
-    var TR_STATUS_SEED = 8;
+function initialize(items) {
+    RPC_VERSION = items.rpc_version;
+
+    if (RPC_VERSION < 14) {
+        TR_STATUS_STOPPED = 16;
+        TR_STATUS_CHECK_WAIT = 1;
+        TR_STATUS_CHECK = 2;
+        TR_STATUS_DOWNLOAD_WAIT = 0;
+        TR_STATUS_DOWNLOAD = 4;
+        TR_STATUS_SEED_WAIT = 0;
+        TR_STATUS_SEED = 8;
+    } else {
+        TR_STATUS_STOPPED = 0;
+        TR_STATUS_CHECK_WAIT = 1;
+        TR_STATUS_CHECK = 2;
+        TR_STATUS_DOWNLOAD_WAIT = 3;
+        TR_STATUS_DOWNLOAD = 4;
+        TR_STATUS_SEED_WAIT = 5;
+        TR_STATUS_SEED = 6;
+    }
+
+    try {
+        SESSION_INFO = items["session-info"];
+        SIZE_PREFIX = SESSION_INFO["arguments"]["units"]["size-units"];
+        SPEED_PREFIX = SESSION_INFO["arguments"]["units"]["speed-units"];
+        SIZE_BYTES = SESSION_INFO["arguments"]["units"]["size-bytes"];
+        SPEED_BYTES = SESSION_INFO["arguments"]["units"]["speed-bytes"];
+    } catch (err) {
+        console.warn('Session info not available', err, err.stack);
+    }
+
+    $(".navitem").click(function () {
+        var selectedList = $(this).attr("name");
+        $(".navitem.selected").removeClass("selected");
+        $(this).addClass("selected");
+        chrome.storage.local.set({ "selected_list": selectedList });
+        buildList();
+    });
+
+    $(".navitem[name=\"" + items.selected_list + "\"]").addClass("selected");
+
+    update();
+
+    $(".webui").html('<a href="' + items.webURL + '" target="_blank">WebUI</a>');
 }
-else {
-    var TR_STATUS_STOPPED = 0;
-    var TR_STATUS_CHECK_WAIT = 1;
-    var TR_STATUS_CHECK = 2;
-    var TR_STATUS_DOWNLOAD_WAIT = 3;
-    var TR_STATUS_DOWNLOAD = 4;
-    var TR_STATUS_SEED_WAIT = 5;
-    var TR_STATUS_SEED = 6;
-}
-
-try {
-    var SESSION_INFO = JSON.parse(localStorage.getItem("session-info"));
-    var SIZE_PREFIX = SESSION_INFO["arguments"]["units"]["size-units"];
-    var SPEED_PREFIX = SESSION_INFO["arguments"]["units"]["speed-units"];
-    var SIZE_BYTES = SESSION_INFO["arguments"]["units"]["size-bytes"];
-    var SPEED_BYTES = SESSION_INFO["arguments"]["units"]["speed-bytes"];
-} catch(err) {
-    console.warn('Session info not available', err, err.stack);
-}
-
 
 /*
     Collects the IDs of all torrents currently listed in the UI. IDs are stored
@@ -69,19 +97,15 @@ function size_to_str(size, units, unit_size) {
 $(document).ready(function() {
     var selectedList;
 
-    selectedList = localStorage.getItem("selected_list");
-
-    $(".navitem").click(function () {
-        selectedList = $(this).attr("name");
-        $(".navitem.selected").removeClass("selected");
-        $(this).addClass("selected");
-        localStorage.setItem("selected_list", selectedList);
-        buildList(selectedList);
+    chrome.storage.local.get([
+        "rpc_version",
+        "session-info",
+        "selected_list",
+        "webURL"
+    ], function(items) {
+        initialize(items);
     });
 
-    $(".navitem[name = \"" + selectedList + "\"]").addClass("selected");
-
-    update();
 
     $(".button").live("click", function() {
         var req = {
@@ -102,21 +126,6 @@ $(document).ready(function() {
             req.arguments.ids = JSON.parse($(this).closest(".list-item").attr("name"));
         else if ($(this).hasClass("all"))
             req.arguments.ids = getIds();
-
-        port.postMessage({
-            "method": "rpc-call",
-            "json": JSON.stringify(req)
-        });
-    });
-
-    $(".turtle").click(function(event) {
-        var req = {
-            "method": "session-set",
-            "arguments": { }
-        };
-        var turtle_status = $(".turtle").hasClass("on");
-
-        req.arguments["alt-speed-enabled"] = !turtle_status;
 
         port.postMessage({
             "method": "rpc-call",
@@ -252,74 +261,88 @@ function createListItem(torrent) {
 }
 
 function buildList() {
-    var list = localStorage.getItem("selected_list");
-    var torrents = JSON.parse(localStorage.getItem("torrents"));
-    var sortable = [];
+    chrome.storage.local.get(["selected_list", "torrents"], function(items) {
+        var list = items.selected_list;
+        var torrents = items.torrents;
+        var sortable = [];
 
-    for (var id in torrents) {
-        var torrent = torrents[id];
-        if ((list == "all") ||
-                (list == "download" && torrent.status == TR_STATUS_DOWNLOAD) ||
-                (list == "download" && torrent.status == TR_STATUS_DOWNLOAD_WAIT) ||
-                (list == "seed" && torrent.status == TR_STATUS_SEED) ||
-                (list == "seed" && torrent.status == TR_STATUS_SEED_WAIT) ||
-                (list == "pause" && torrent.status == TR_STATUS_STOPPED)) {
-            sortable.push(torrent);
+        for (var id in torrents) {
+            var torrent = torrents[id];
+            if ((list == "all") ||
+                    (list == "download" && torrent.status == TR_STATUS_DOWNLOAD) ||
+                    (list == "download" && torrent.status == TR_STATUS_DOWNLOAD_WAIT) ||
+                    (list == "seed" && torrent.status == TR_STATUS_SEED) ||
+                    (list == "seed" && torrent.status == TR_STATUS_SEED_WAIT) ||
+                    (list == "pause" && torrent.status == TR_STATUS_STOPPED)) {
+                sortable.push(torrent);
+            }
         }
-    }
-    sortable.sort(function(a, b) {
-        return a.queuePosition - b.queuePosition;
+        sortable.sort(function(a, b) {
+            return a.queuePosition - b.queuePosition;
+        });
+
+        $(".list-wrapper").empty();
+
+        for (var i in sortable) {
+            $(".list-wrapper").append(createListItem(sortable[i]));
+        }
     });
-
-    $(".list-wrapper").empty();
-
-    for (var i in sortable) {
-        $(".list-wrapper").append(createListItem(sortable[i]));
-    }
 }
 
 function updateSpeed() {
-    var stats = JSON.parse(localStorage.getItem("session-stats"));
-    var downSpeed = new Number(stats.arguments.downloadSpeed / SPEED_BYTES);
-    var upSpeed = new Number(stats.arguments.uploadSpeed / SPEED_BYTES);
+    chrome.storage.local.get("session-stats", function(items) {
+        var stats = items["session-stats"];
+        if (!stats) return;
+        var downSpeed = new Number(stats.arguments.downloadSpeed / SPEED_BYTES);
+        var upSpeed = new Number(stats.arguments.uploadSpeed / SPEED_BYTES);
 
-    $(".stats-wrapper").html(size_to_str(downSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8595; " + size_to_str(upSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8593;");
+        $(".stats-wrapper").html(size_to_str(downSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8595; " + size_to_str(upSpeed, SPEED_PREFIX, SPEED_BYTES) + " &#8593;");
+    });
 }
 
 function updateTurtle() {
-    var session_info = JSON.parse(localStorage.getItem("session-info"));
-    var turtle = session_info.arguments["alt-speed-enabled"];
-    if (turtle)
-        $("img.turtle").removeClass("off").addClass("on");
-    else
-        $("img.turtle").removeClass("on").addClass("off");
+    chrome.storage.local.get("session-info", function(items) {
+        var session_info = items["session-info"];
+        if (!session_info) return;
+        var turtle = session_info.arguments["alt-speed-enabled"];
+        if (turtle)
+            $("img.turtle").removeClass("off").addClass("on");
+        else
+            $("img.turtle").removeClass("on").addClass("off");
+    });
 }
 
-function update(event) {
-    if (localStorage.getItem("lastStatus") != 200) {
-        var msg = '';
-        msg += '<div class="transmission-error">Unable to contact Transmission server ';
-        msg += localStorage.getItem("rpcURL");
-        msg += '<br /><a href="' + chrome.extension.getURL("../html/options.html") +'" target="_blank">';
-        msg += 'go to the options page</a></div>';
-        $("body").html(msg);
-    }
-    // fired without event argument by document.ready
-    else if (typeof event == "undefined") {
-        buildList();
-        updateSpeed();
-        updateTurtle();
-    }
-    else if (event.key == "torrents") {
-        buildList();
-    }
-    else if (event.key == "session-stats") {
-        updateSpeed();
-    }
-    else if (event.key == "session-info") {
-        updateTurtle();
-    }
+function update(changes) {
+    chrome.storage.local.get(["lastStatus", "rpcURL"], function(items) {
+        if (items.lastStatus != 200) {
+            var msg = '';
+            msg += '<div class="transmission-error">Unable to contact Transmission server ';
+            msg += items.rpcURL;
+            msg += '<br /><a href="' + chrome.runtime.getURL("html/options.html") +'" target="_blank">';
+            msg += 'go to the options page</a></div>';
+            $("body").html(msg);
+            return;
+        }
+        if (!changes) {
+            return;
+        }
+        var keys = Object.keys(changes);
+        if (keys.includes("torrents")) {
+            buildList();
+        }
+        if (keys.includes("session-stats")) {
+            updateSpeed();
+        }
+        if (keys.includes("session-info")) {
+            updateTurtle();
+        }
+    });
 }
 
-window.addEventListener("storage", update, false);
+chrome.storage.onChanged.addListener(update);
+
+// Initial update
+buildList();
+updateSpeed();
+updateTurtle();
 

@@ -1,78 +1,68 @@
+importScripts('torrent.js', 'transmission.js');
+
 var interval;
 
 chrome.contextMenus.create({
+    "id": "torrent-to-transmission",
     "title": ".torrent To Transmission",
-    "contexts": ["link"],
-    "onclick": torrentOnClick,
+    "contexts": ["link"]
 });
 
-/*chrome.contextMenus.create({
-    "type": "separator",
-    "contexts": ["link"],
-    "onclick": torrentOnClick,
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+    if (info.menuItemId === "torrent-to-transmission") {
+        torrentOnClick(info, tab);
+    }
 });
-
-chrome.contextMenus.create({
-    "title": ".torrent to Transmission2",
-    "contexts": ["link"],
-    "onclick": torrentOnClick,
-});*/
 
 /*
     Initial load.
 */
-var options = [
-    {
-        key: 'rpcUser',
-        default: ''
-    },
-    {
-        key: 'rpcPass',
-        default: ''
-    },
-    {
-        key: 'rpcURL',
-        default: 'http://localhost:9091/transmission/rpc'
-    },
-    {
-        key: 'webURL',
-        default: 'http://localhost:9091'
-    },
-    {
-        key: 'displayNotification',
-        default: true
-    },
-    {
-        key: 'notificationDuration',
-        default: 10
-    },
-    {
-        key: 'refreshRate',
-        default: 5
-    },
-    {
-        key: 'sendTorrentFile',
-        default: false
-    },
-    {
-        key: 'selected_list',
-        default: 'all'
-    },
-    {
-        key: 'enable-additional-paths',
-        default: false
-    }
+const options = [
+    { key: 'rpcUser', default: '' },
+    { key: 'rpcPass', default: '' },
+    { key: 'rpcURL', default: 'http://localhost:9091/transmission/rpc' },
+    { key: 'webURL', default: 'http://localhost:9091' },
+    { key: 'displayNotification', default: true },
+    { key: 'notificationDuration', default: 10 },
+    { key: 'refreshRate', default: 5 },
+    { key: 'sendTorrentFile', default: false },
+    { key: 'selected_list', default: 'all' },
+    { key: 'enable-additional-paths', default: false }
 ];
 
-options.forEach(function(configItem) {
-   if (localStorage[configItem.key] === undefined) {
-       localStorage[configItem.key] = configItem.default;
-   }
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.storage.local.get(options.map(o => o.key), (items) => {
+        const toSet = {};
+        options.forEach(configItem => {
+            if (items[configItem.key] === undefined) {
+                toSet[configItem.key] = configItem.default;
+            }
+        });
+        chrome.storage.local.set(toSet);
+    });
+    chrome.storage.local.get('refreshRate', (items) => {
+        const refreshRate = items.refreshRate || 5;
+        // Convert seconds to minutes for the alarm. Minimum is 1 minute for periodInMinutes,
+        // but we can use floating point values. Let's use a small value and re-create it.
+        // Or, let's just use a delay and re-create it in the alarm handler to be safe.
+        chrome.alarms.create('update', { delayInMinutes: refreshRate / 60 });
+    });
+    // reset torrents on page creation
+    chrome.storage.local.set({ torrents: {} });
+    update();
 });
 
-interval = setInterval(update, localStorage.refreshRate * 1000);
 
-chrome.extension.onConnect.addListener(function(port) {
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'update') {
+        update();
+        const { refreshRate } = await chrome.storage.local.get('refreshRate');
+        chrome.alarms.create('update', { delayInMinutes: (refreshRate || 5) / 60 });
+    }
+});
+
+
+chrome.runtime.onConnect.addListener(function(port) {
     if (port.name == "options") {
         port.onMessage.addListener(function(msg) {
             if (msg.method == "rpc-test") {
@@ -107,22 +97,14 @@ chrome.extension.onConnect.addListener(function(port) {
     }
 });
 
-function onStorageChange(event) {
-    if (event.key == "refreshRate") {
-        clearInterval(interval);
-        interval = setInterval(update, localStorage.refreshRate * 1000);
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (changes.refreshRate) {
+        chrome.alarms.clear('update', () => {
+            const refreshRate = changes.refreshRate.newValue || 5;
+            chrome.alarms.create('update', { delayInMinutes: refreshRate / 60 });
+        });
     }
-    else if (event.key == "rpcURL") {
-        localStorage.sessionId = "";
-        localStorage.setItem("torrents", JSON.stringify({}));
+    if (changes.rpcURL) {
+        chrome.storage.local.set({ sessionId: "", torrents: {} });
     }
-}
-
-if (window.addEventListener)
-    window.addEventListener("storage", onStorageChange, false);
-else
-    window.attachEvent("onstorage", onStorageChange);
-
-// reset torrents on page creation
-localStorage.setItem("torrents", JSON.stringify({}));
-update();
+});
