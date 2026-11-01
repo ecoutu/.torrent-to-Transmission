@@ -14,7 +14,8 @@
     "compile": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
     "postinstall": "wxt prepare",
-    "test:e2e": "node tests/e2e/run.mjs"
+    "test:e2e": "node tests/e2e/run.mjs",
+    "store:assets": "node store/generate.mjs"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^7.0.0",

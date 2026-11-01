@@ -151,6 +151,8 @@ Releases are automated with [semantic-release](https://semantic-release.gitbook.
    - Chrome Web Store: `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`
    - Firefox Add-ons: `FIREFOX_EXTENSION_ID`, `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
 
+Store listing text and artwork live in `store/`. `store/listing.md` has the copy for each Developer Dashboard field. `npm run build && npm run store:assets` regenerates the screenshots and promo tiles from the real UI, using a demo Transmission server.
+
 PRs are squash-merged, so **PR titles must be Conventional Commits** (checked by the `PR title` workflow). Run `npx wxt submit init` to generate the store secrets, and the **Validate store credentials** workflow to check them.
 
 ### Testing
