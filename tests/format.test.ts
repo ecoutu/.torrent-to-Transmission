@@ -1,16 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { describeTorrent, formatEta, formatEtaShort, formatSize, formatSpeed } from '@/utils/format';
 import { statusConstants, type Torrent } from '@/utils/transmission';
+
+beforeAll(() => {
+    vi.stubGlobal('navigator', { language: 'en-US' });
+});
 
 describe('formatSize', () => {
     it('formats using Transmission-style units', () => {
         expect(formatSize(500)).toBe('1 kB');
-        expect(formatSize(1_500_000)).toBe('1.50 MB');
-        expect(formatSize(2_000_000_000)).toBe('2.00 GB');
+        expect(formatSize(880_000_000)).toBe('880 MB');
+        expect(formatSize(2_000_000_000)).toBe('2 GB');
+        expect(formatSize(6_480_000_000)).toBe('6.48 GB');
     });
 
     it('stays on the largest unit for huge values', () => {
-        expect(formatSize(5e15)).toBe('5000.00 TB');
+        expect(formatSize(5e15)).toBe('5,000 TB');
     });
 });
 
@@ -23,17 +28,29 @@ describe('Transmission 4 units (starting at bytes)', () => {
     };
 
     it('formats sizes and speeds without shifting a unit', () => {
-        expect(formatSize(734_003_200, units)).toBe('734.00 MB');
+        expect(formatSize(734_003_200, units)).toBe('734 MB');
         expect(formatSize(512, units)).toBe('512 B');
-        expect(formatSpeed(2_500_000, units)).toBe('2.50 MB/s');
-        expect(formatSpeed(0, units)).toBe('0 B/s');
+        expect(formatSpeed(2_500_000, units)).toBe('2.5 MB/s');
+        expect(formatSpeed(944_000, units)).toBe('944 kB/s');
+        // like Transmission, speeds never go below kB/s
+        expect(formatSpeed(0, units)).toBe('0 kB/s');
+        expect(formatSpeed(512, units)).toBe('0.51 kB/s');
+    });
+});
+
+describe('unit rounding', () => {
+    it('moves up a unit instead of showing 1000', () => {
+        expect(formatSpeed(999_996)).toBe('1 MB/s');
+        expect(formatSize(999_600_000)).toBe('1 GB');
     });
 });
 
 describe('formatSpeed', () => {
     it('formats bytes per second', () => {
         expect(formatSpeed(0)).toBe('0 kB/s');
-        expect(formatSpeed(2_500_000)).toBe('2.50 MB/s');
+        expect(formatSpeed(2_500_000)).toBe('2.5 MB/s');
+        expect(formatSpeed(8_400_000)).toBe('8.4 MB/s');
+        expect(formatSpeed(312_000)).toBe('312 kB/s');
     });
 });
 
@@ -72,7 +89,7 @@ describe('describeTorrent', () => {
         expect(describeTorrent(torrent({}), S)).toEqual({
             state: 'download',
             label: 'Downloading',
-            detail: '1.20 GB of 4.00 GB · 30% · 12 min left',
+            detail: '1.2 GB of 4 GB · 30% · 12 min left',
             progress: 0.3
         });
     });
@@ -84,7 +101,7 @@ describe('describeTorrent', () => {
 
     it('describes seeding with ratio', () => {
         const view = describeTorrent(torrent({ status: S.SEED, leftUntilDone: 0, percentDone: 1 }), S);
-        expect([view.state, view.detail]).toEqual(['seed', '4.00 GB · ratio 1.23']);
+        expect([view.state, view.detail]).toEqual(['seed', '4 GB · ratio 1.23']);
     });
 
     it('distinguishes paused from finished', () => {
@@ -100,5 +117,13 @@ describe('describeTorrent', () => {
     it('surfaces local data errors', () => {
         const view = describeTorrent(torrent({ error: 3, errorString: 'No data found! Ensure your drives are connected' }), S);
         expect([view.state, view.detail]).toEqual(['error', 'No data found! Ensure your drives are connected']);
+    });
+});
+
+describe('locale', () => {
+    it("uses the browser's language for separators", () => {
+        vi.stubGlobal('navigator', { language: 'de-DE' });
+        expect(formatSize(6_480_000_000)).toBe('6,48 GB');
+        vi.stubGlobal('navigator', { language: 'en-US' });
     });
 });
