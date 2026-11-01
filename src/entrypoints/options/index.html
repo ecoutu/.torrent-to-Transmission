@@ -1,117 +1,13 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>.torrent to Transmission Options</title>
-
-    <meta name="manifest.open_in_tab" content="false" />
-    <script type="module" src="./main.ts"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>.torrent to Transmission settings</title>
+    <meta name="manifest.open_in_tab" content="true" />
 </head>
-
 <body>
-    <h1 class="header">.torrent to Transmission</h1>
-
-    <div class="section">
-        <div class="header">Transmission Server</div>
-        <div class="content">
-            <table>
-                <tr id="rpc-url-row">
-                    <td class="label">RPC address</td>
-                    <td class="field"><input type="url" id="rpc-url" /></td>
-                    <td id="rpc-test-url"></td>
-                </tr>
-                <tr id="web-url-row">
-                    <td class="label">WebUI address</td>
-                    <td class="field"><input type="url" id="web-url" /></td>
-                </tr>
-                <tr id="rpc-user-row">
-                    <td class="label">Username</td>
-                    <td class="field"><input type="text" id="rpc-user" /></td>
-                    <td id="rpc-test-user"></td>
-                </tr>
-                <tr>
-                    <td class="label">Password</td>
-                    <td class="field"><input type="password" id="rpc-pass" /></td>
-                </tr>
-                <tr>
-                    <td class="label">Refresh rate (seconds)</td>
-                    <td class="field"><input type="number" id="refresh-rate" min="1" step="1" /></td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    <div class="section">
-        <div class="header">Notifications</div>
-        <div class="content">
-            <input type="checkbox" id="notification-display" /> Display desktop notifications
-            <table id="notification-table">
-                <tr>
-                    <td class="label">Duration (seconds) - 0 for no dismissal</td>
-                    <td class="field"><input type="number" id="notification-duration" min="0" step="1" /></td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    <div class="section" style="display:none;">
-        <div class="header">Download Paths</div>
-        <div class="content">
-            <input type="checkbox" id="enable-additional-paths" /> Enable additional download locations
-            <table id="paths-table">
-                <tr>
-                    <th>Label</th>
-                    <th>Directory</th>
-                </tr>
-                <tr class="path-row">
-                    <td><input type="text" class="path-label" /></td>
-                    <td><input type="text" class="path-directory" /></td>
-                    <td><input type="button" value="Add" id="add-path" /></td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    <div class="section">
-        <div class="header">Advanced</div>
-        <div class="content">
-            <table>
-                <tr>
-                    <td class="label">Send .torrent file</td>
-                    <td class="field"><input type="checkbox"
-                                             id="send-torrent-file"/></td>
-                    <td class="details">Instead of sending the torrent link to
-                        Transmission, download and send the .torrent file. Works
-                        better for .torrent files behind a login (eg: private
-                        trackers). Only applies to non-magnet (.torrent file)
-                        links.
-                    </td>
-                </tr>
-                <tr>
-                    <td class="label">Send magnet links when clicked</td>
-                    <td class="field"><input type="checkbox"
-                                             id="click-magnets"/></td>
-                    <td class="details">Left-clicking a magnet link sends it to
-                        Transmission instead of opening your system's torrent
-                        app. Hold Ctrl, Shift, Alt or Cmd while clicking to skip.
-                    </td>
-                </tr>
-                <tr>
-                    <td></td>
-                    <td colspan="2" class="details">Saving asks Chrome for
-                        access to your Transmission server. The two options
-                        above also need access to all sites (to download
-                        .torrent files and to detect magnet link clicks).
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
-
-    <div class="footer">
-        <input type="submit" value="Save" disabled />
-        <input type="reset" value="Close" />
-        <span id="save-status" class="result"></span>
-    </div>
+    <div id="app"></div>
+    <script type="module" src="./main.ts"></script>
 </body>
-
 </html>
-

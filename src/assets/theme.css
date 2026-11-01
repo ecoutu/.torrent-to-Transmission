@@ -1,0 +1,281 @@
+/*
+    Shared design tokens and base controls for the popup and options page.
+    Light and dark follow the system setting.
+*/
+:root {
+    color-scheme: light dark;
+
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    --bg: #ffffff;
+    --surface: #f6f7f9;
+    --surface-hover: #eef0f3;
+    --surface-active: #e4e7eb;
+    --border: #e1e4e8;
+    --border-strong: #c9ced6;
+    --text: #1b1f24;
+    --text-muted: #5e6670;
+    --text-faint: #8a929c;
+
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-text: #ffffff;
+    --accent-soft: #e8efff;
+    --focus: #2563eb;
+
+    --success: #16a34a;
+    --success-soft: #e7f6ec;
+    --warning: #d97706;
+    --warning-soft: #fdf3e2;
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --danger-soft: #fdecec;
+
+    /* torrent states */
+    --state-download: #2563eb;
+    --state-seed: #16a34a;
+    --state-paused: #9aa3ad;
+    --state-check: #d97706;
+    --state-queued: #7c8a9a;
+    --state-error: #dc2626;
+    --track: #e7eaee;
+
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-pop: 0 6px 24px rgb(15 23 42 / 0.14), 0 1px 3px rgb(15 23 42 / 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #16181c;
+        --surface: #1e2126;
+        --surface-hover: #262a30;
+        --surface-active: #2e333a;
+        --border: #2c3036;
+        --border-strong: #3d434b;
+        --text: #e8eaed;
+        --text-muted: #a3aab3;
+        --text-faint: #767e88;
+
+        --accent: #5b8cff;
+        --accent-hover: #7aa2ff;
+        --accent-text: #0b1220;
+        --accent-soft: #1d2a47;
+        --focus: #7aa2ff;
+
+        --success: #3fbf6f;
+        --success-soft: #16301f;
+        --warning: #f0a33a;
+        --warning-soft: #3a2a12;
+        --danger: #f26b6b;
+        --danger-hover: #ff8a8a;
+        --danger-soft: #3a1b1b;
+
+        --state-download: #5b8cff;
+        --state-seed: #3fbf6f;
+        --state-paused: #6b737d;
+        --state-check: #f0a33a;
+        --state-queued: #7f8b99;
+        --state-error: #f26b6b;
+        --track: #2b3036;
+
+        --shadow-pop: 0 8px 28px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.4);
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+}
+
+.btn:active:not(:disabled) {
+    background: var(--surface-active);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.btn.primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+}
+
+.btn.primary:hover:not(:disabled) {
+    border-color: var(--accent-hover);
+    background: var(--accent-hover);
+}
+
+.btn.danger {
+    border-color: var(--danger);
+    background: var(--danger);
+    color: #fff;
+}
+
+.btn.danger:hover:not(:disabled) {
+    border-color: var(--danger-hover);
+    background: var(--danger-hover);
+}
+
+.btn.ghost {
+    border-color: transparent;
+    background: transparent;
+}
+
+.btn.ghost:hover:not(:disabled) {
+    background: var(--surface-hover);
+}
+
+.btn.small {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background-color 0.12s, color 0.12s;
+}
+
+.icon-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+
+.icon-btn:active {
+    background: var(--surface-active);
+}
+
+.icon-btn[aria-pressed="true"] {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.icon-btn.small {
+    width: 26px;
+    height: 26px;
+}
+
+/* Inputs */
+.input {
+    width: 100%;
+    height: 34px;
+    padding: 0 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--text);
+    font: inherit;
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.input::placeholder {
+    color: var(--text-faint);
+}
+
+.input:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.input[aria-invalid="true"] {
+    border-color: var(--danger);
+}
+
+select.input {
+    padding-right: 28px;
+}
+
+/* Status text */
+.muted {
+    color: var(--text-muted);
+}
+
+.text-success {
+    color: var(--success);
+}
+
+.text-danger {
+    color: var(--danger);
+}
+
+.text-warning {
+    color: var(--warning);
+}

@@ -28,6 +28,8 @@ const SCREENSHOTS = process.env.E2E_SCREENSHOTS;
 const AUTH = 'Basic ' + btoa('test:test');
 const PAGE_PORT = 8765;
 const MAGNET = 'magnet:?xt=urn:btih:89abcdef0123456789abcdef0123456789abcdef&dn=clicked-magnet';
+// fake info hashes so the test server never downloads anything real
+const ADD_MAGNET = 'magnet:?xt=urn:btih:00000000000000000000000000000000c0ffee00&dn=popup-added';
 const SEED_MAGNET = 'magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=e2e-test-torrent';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -115,6 +117,9 @@ async function extPage(browser, id, path) {
 const waitFor = (page, fn, arg) => page.waitForFunction(fn, { timeout: 6000 }, arg).catch(() => {});
 
 /* Scenarios */
+const statusKind = (page) => page.$eval('[data-testid="connection-status"]', (e) => e.dataset.kind).catch(() => null);
+const waitForStatus = (page, kind) => waitFor(page, (k) => document.querySelector('[data-testid="connection-status"]')?.dataset.kind === k, kind);
+
 async function freshInstall(work) {
     rmSync(work, { recursive: true, force: true });
     cpSync(NEW_BUILD, work, { recursive: true });
@@ -132,15 +137,16 @@ async function freshInstall(work) {
             await chrome.storage.local.set({ rpcURL, rpcUser: 'test', rpcPass: 'test' });
         }, RPC);
         await options.reload();
-        await waitFor(options, () => document.getElementById('rpc-test-url').textContent.startsWith('Click Save'));
-        check('options explains access is needed',
-            (await options.$eval('#rpc-test-url', (e) => e.textContent)).startsWith('Click Save to allow access'));
+        await waitForStatus(options, 'permission');
+        check('options asks to connect when access is missing', (await statusKind(options)) === 'permission');
+        check('options offers Connect',
+            (await options.$eval('[data-testid="save-server"]', (e) => !e.disabled && e.textContent.trim())) === 'Connect');
+        await screenshot(options, 'options-permission');
 
         const popup = await extPage(browser, id, 'popup.html');
-        await popup.setViewport({ width: 520, height: 200 });
-        await popup.waitForSelector('.grant-access:not([hidden])', { timeout: 6000 }).catch(() => {});
-        check('popup offers to grant access', !(await popup.$eval('.grant-access', (e) => e.hidden)));
-        await screenshot(popup, 'popup-grant');
+        await popup.waitForSelector('[data-testid="grant-access"]', { timeout: 6000 }).catch(() => {});
+        check('popup offers to grant access', !!(await popup.$('[data-testid="grant-access"]')));
+        await screenshot(popup, 'popup-permission');
     } finally {
         await browser.close();
     }
@@ -167,18 +173,17 @@ async function upgradeAndUse(work, oldBuild) {
 
         const options = await extPage(browser, id, 'options.html');
         const manifest = await options.evaluate(() => chrome.runtime.getManifest());
-        check('upgrade installs new version', manifest.version === VERSION, manifest.version);
+        check('upgrade installs the new build', manifest.version === VERSION && !!manifest.optional_host_permissions, manifest.version);
         check('upgrade keeps host access',
             await options.evaluate(() => chrome.permissions.contains({ origins: ['http://*/*', 'https://*/*'] })));
         check('settings survive upgrade', (await options.evaluate(() => chrome.storage.local.get('rpcURL'))).rpcURL === RPC);
-        await waitFor(options, () => document.getElementById('rpc-test-url').textContent.startsWith('Success'));
-        check('options connection test succeeds',
-            (await options.$eval('#rpc-test-url', (e) => e.textContent)).startsWith('Success'));
+        await waitForStatus(options, 'ok');
+        check('options shows connected', (await statusKind(options)) === 'ok');
 
         const badge = await options.evaluate(() => chrome.action.getBadgeText({}));
         check('badge shows counts', /^\d\/\d$/.test(badge), badge);
 
-        await popupFlows(browser, id);
+        await popupFlows(browser, id, options);
         await magnetClickFlows(browser, id, options);
         await optionsFlows(options);
         await offlineFlows(browser, id, options);
@@ -187,38 +192,67 @@ async function upgradeAndUse(work, oldBuild) {
     }
 }
 
-async function popupFlows(browser, id) {
+async function popupFlows(browser, id, options) {
     const popup = await extPage(browser, id, 'popup.html');
     const errors = [];
     popup.on('pageerror', (e) => errors.push(String(e)));
-    await popup.setViewport({ width: 520, height: 300 });
+    await popup.setViewport({ width: 420, height: 600 });
+    const rows = () => popup.$$('[data-testid="torrent"]');
+    const names = () => popup.$$eval('[data-testid="torrent"] .name', (els) => els.map((e) => e.textContent));
 
-    await popup.waitForSelector('.list-item', { timeout: 6000 }).catch(() => {});
-    const names = await popup.$$eval('.list-item .name', (els) => els.map((e) => e.textContent));
-    check('popup lists torrents on first open', names.length === 1 && names[0] === 'e2e-test-torrent', JSON.stringify(names));
+    await popup.waitForSelector('[data-testid="torrent"]', { timeout: 6000 }).catch(() => {});
+    check('popup lists torrents on first open', JSON.stringify(await names()) === '["e2e-test-torrent"]', JSON.stringify(await names()));
     await screenshot(popup, 'popup');
 
-    await popup.click('.list-item .button.pause');
-    await popup.waitForSelector('.list-item .button.resume', { timeout: 6000 }).catch(() => {});
+    await popup.click('[data-testid="torrent"] [data-testid="pause"]');
+    await popup.waitForSelector('[data-testid="torrent"] [data-testid="resume"]', { timeout: 6000 }).catch(() => {});
     check('pause updates server and popup',
-        (await torrents())[0].status === 0 && !!(await popup.$('.list-item .button.resume')));
+        (await torrents())[0].status === 0 && !!(await popup.$('[data-testid="torrent"] [data-testid="resume"]')));
 
-    await popup.click('.navitem[data-list="pause"]');
-    check('paused tab shows paused torrent', (await popup.$$('.list-item')).length === 1);
-    await popup.click('.navitem[data-list="download"]');
-    check('downloading tab hides paused torrent', (await popup.$$('.list-item')).length === 0);
-    await popup.click('.navitem[data-list="all"]');
+    await popup.click('[data-testid="filter-pause"]');
+    check('paused tab shows paused torrent', (await rows()).length === 1);
+    await popup.click('[data-testid="filter-download"]');
+    check('downloading tab hides paused torrent', (await rows()).length === 0 && !!(await popup.$('[data-testid="empty"]')));
+    await popup.click('[data-testid="filter-all"]');
 
-    await popup.click('.button.resume.all');
+    await popup.click('[data-testid="resume-all"]');
     await sleep(2000);
     check('resume all starts torrent', (await torrents())[0].status !== 0);
 
-    await popup.click('img.turtle');
-    await sleep(2000);
+    await popup.click('[data-testid="alt-speed"]');
+    await waitFor(popup, () => document.querySelector('[data-testid="alt-speed"]').getAttribute('aria-pressed') === 'true');
     check('turtle toggles alt speed',
         (await rpc('session-get', { fields: ['alt-speed-enabled'] })).arguments['alt-speed-enabled'] === true &&
-        await popup.$eval('img.turtle', (e) => e.classList.contains('on')));
+        (await popup.$eval('[data-testid="alt-speed"]', (e) => e.getAttribute('aria-pressed'))) === 'true');
     await rpc('session-set', { 'alt-speed-enabled': false });
+
+    // add from the popup, into a download location
+    await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [['Movies', '/downloads/movies']] }));
+    await popup.click('[data-testid="toggle-add"]');
+    await popup.waitForSelector('[data-testid="add-location"]', { timeout: 6000 }).catch(() => {});
+    check('add form offers download locations', !!(await popup.$('[data-testid="add-location"]')));
+    await popup.type('[data-testid="add-url"]', ADD_MAGNET);
+    await popup.select('[data-testid="add-location"]', '/downloads/movies');
+    await popup.click('[data-testid="add-submit"]');
+    await popup.waitForSelector('[data-testid="add-result"]', { timeout: 6000 }).catch(() => {});
+    const added = (await rpc('torrent-get', { fields: ['name', 'downloadDir'] })).arguments.torrents.find((t) => t.name === 'popup-added');
+    check('adding from the popup reports success',
+        ((await popup.$eval('[data-testid="add-result"]', (e) => e.textContent).catch(() => '')) || '').includes('Torrent added'));
+    check('popup add uses the chosen location', added?.downloadDir === '/downloads/movies', added?.downloadDir);
+    await screenshot(popup, 'popup-add');
+    await popup.click('[data-testid="toggle-add"]');
+    await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [] }));
+
+    // remove via the row menu with confirmation
+    await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"] .name')].some((e) => e.textContent === 'popup-added'), { timeout: 6000 }).catch(() => {});
+    const row = await popup.evaluateHandle(() =>
+        [...document.querySelectorAll('[data-testid="torrent"]')].find((e) => e.querySelector('.name').textContent === 'popup-added'));
+    await (await row.$('[data-testid="more"]')).click();
+    await (await row.$('[data-testid="remove"]')).click();
+    check('remove asks for confirmation', !!(await row.$('[data-testid="confirm-remove"]')));
+    await (await row.$('[data-testid="confirm-remove"]')).click();
+    await sleep(2000);
+    check('confirmed remove deletes the torrent', !(await torrents()).some((t) => t.name === 'popup-added'));
 
     check('no popup errors', errors.length === 0, errors.join(' | '));
     await popup.close();
@@ -231,6 +265,7 @@ async function magnetClickFlows(browser, id, options) {
     }).listen(PAGE_PORT, '127.0.0.1');
     const pageUrl = `http://127.0.0.1:${PAGE_PORT}/`;
     const hasClicked = async () => (await torrents()).some((t) => t.name === 'clicked-magnet');
+    const registered = () => options.evaluate(() => chrome.scripting.getRegisteredContentScripts());
 
     try {
         // Off by default. An unhandled magnet click leaves an external
@@ -243,14 +278,13 @@ async function magnetClickFlows(browser, id, options) {
         await off.close();
 
         await options.bringToFront();
-        await options.click('#click-magnets');
-        await options.click('input[type=submit]');
-        await waitFor(options, () => document.getElementById('save-status').textContent === 'Saved.');
-        check('save succeeds without prompting when access is granted',
-            (await options.$eval('#save-status', (e) => e.textContent)) === 'Saved.');
+        await options.click('[data-testid="click-magnets"]');
+        await waitFor(options, () => document.querySelector('[data-testid="toast"]').textContent === 'Saved');
+        check('toggle autosaves without prompting when access is granted',
+            (await options.$eval('[data-testid="toast"]', (e) => e.textContent)) === 'Saved' &&
+            (await options.evaluate(() => chrome.storage.local.get('clickMagnets'))).clickMagnets === true);
         await sleep(500);
-        check('magnet content script registered',
-            (await options.evaluate(() => chrome.scripting.getRegisteredContentScripts())).some((s) => s.id === 'magnet-click'));
+        check('magnet content script registered', (await registered()).some((s) => s.id === 'magnet-click'));
 
         const on = await browser.newPage();
         await on.goto(pageUrl);
@@ -269,11 +303,9 @@ async function magnetClickFlows(browser, id, options) {
         await on.close();
 
         await options.bringToFront();
-        await options.click('#click-magnets');
-        await options.click('input[type=submit]');
+        await options.click('[data-testid="click-magnets"]');
         await sleep(1000);
-        check('magnet content script unregistered when disabled',
-            (await options.evaluate(() => chrome.scripting.getRegisteredContentScripts())).length === 0);
+        check('magnet content script unregistered when disabled', (await registered()).length === 0);
     } finally {
         server.close();
     }
@@ -281,30 +313,47 @@ async function magnetClickFlows(browser, id, options) {
 
 async function optionsFlows(options) {
     await options.bringToFront();
+    await options.setViewport({ width: 900, height: 900 });
+
+    // download locations
+    await options.type('[data-testid="location-label"]', 'Movies');
+    await options.type('[data-testid="location-dir"]', '/downloads/movies');
+    await options.click('[data-testid="location-add"]');
+    await sleep(300);
+    check('download location is saved',
+        JSON.stringify((await options.evaluate(() => chrome.storage.local.get('additional-paths')))['additional-paths']) ===
+        JSON.stringify([['Movies', '/downloads/movies']]));
     await screenshot(options, 'options');
-    await options.$eval('#rpc-pass', (e) => {
-        e.value = 'wrong';
-        e.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-    await waitFor(options, () => document.getElementById('rpc-test-user').textContent !== '');
+
+    // wrong password is reported on save
+    await options.click('[data-testid="rpc-pass"]', { count: 3 });
+    await options.type('[data-testid="rpc-pass"]', 'wrong');
+    check('unsaved server changes are flagged', (await options.$eval('[data-testid="connection-status"]', (e) => e.textContent)).includes('Unsaved'));
+    await options.click('[data-testid="save-server"]');
+    await waitForStatus(options, 'error');
     check('options reports bad password',
-        (await options.$eval('#rpc-test-user', (e) => e.textContent)).includes('invalid username/password'));
-    check('save enabled when dirty', !(await options.$eval('input[type=submit]', (e) => e.disabled)));
-    await options.reload();
+        (await options.$eval('[data-testid="connection-status"]', (e) => e.textContent)).includes('Wrong username or password'));
+
+    await options.click('[data-testid="rpc-pass"]', { count: 3 });
+    await options.type('[data-testid="rpc-pass"]', 'test');
+    await options.click('[data-testid="save-server"]');
+    await waitForStatus(options, 'ok');
+    check('fixing the password reconnects', (await statusKind(options)) === 'ok');
 }
 
 async function offlineFlows(browser, id, options) {
     const popup = await extPage(browser, id, 'popup.html');
-    await popup.waitForSelector('.list-item', { timeout: 6000 }).catch(() => {});
+    await popup.waitForSelector('[data-testid="torrent"]', { timeout: 6000 }).catch(() => {});
 
     await options.evaluate(() => chrome.storage.local.set({ rpcURL: 'http://127.0.0.1:1/transmission/rpc' }));
-    await sleep(2500);
-    check('popup shows connection error', await popup.$eval('.transmission-error', (e) => !e.hidden));
+    await popup.waitForSelector('[data-testid="connection-error"]', { timeout: 6000 }).catch(() => {});
+    check('popup shows connection error', !!(await popup.$('[data-testid="connection-error"]')));
+    await screenshot(popup, 'popup-error');
     check('badge shows offline', (await options.evaluate(() => chrome.action.getBadgeText({}))) === '?');
 
     await options.evaluate((rpcURL) => chrome.storage.local.set({ rpcURL }), RPC);
-    await sleep(3000);
-    check('popup recovers when server returns', (await popup.$$('.list-item')).length === 1);
+    await popup.waitForSelector('[data-testid="torrent"]', { timeout: 8000 }).catch(() => {});
+    check('popup recovers when server returns', (await popup.$$('[data-testid="torrent"]')).length === 1);
     await popup.close();
 }
 
