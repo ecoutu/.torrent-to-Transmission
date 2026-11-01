@@ -116,7 +116,7 @@ Periodically refreshes torrent status in the background to update the toolbar ba
 Registers a small content script only when the user turns on "Send magnet links when clicked". It listens for clicks on magnet: links and sends that link to the user's Transmission server. It reads no other page content.
 ```
 
-**Host permissions (optional_host_permissions: http://*/*, https://*/*)**
+**Host permissions:** the dashboard doesn't ask for this. Since 1.2.0, host access is only in `optional_host_permissions` (requested at runtime), so there is no install-time host permission to justify. If a reviewer asks, use:
 ```
 Host access is optional and requested at runtime. The extension asks for access to the host of the user's own Transmission server, which can be any address the user configures (localhost, a LAN IP, a NAS or a remote server). Access to all sites is requested only if the user turns on "Download .torrent files in the browser" (to fetch the .torrent file from the site, with the user's login, for private trackers) or "Send magnet links when clicked" (to detect magnet link clicks).
 ```
