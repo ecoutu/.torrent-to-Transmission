@@ -98,7 +98,7 @@ describe('diffTorrents', () => {
     const torrent = (overrides: Partial<Torrent>): Torrent => ({
         id: 1, name: 't', status: S.DOWNLOAD, sizeWhenDone: 100, leftUntilDone: 50, percentDone: 0.5,
         rateDownload: 0, rateUpload: 0, peersConnected: 0, peersGettingFromUs: 0, peersSendingToUs: 0,
-        recheckProgress: 0, queuePosition: 0, error: 0, errorString: '', eta: 10,
+        recheckProgress: 0, queuePosition: 0, error: 0, errorString: '', eta: 10, uploadRatio: 0,
         ...overrides
     });
 
