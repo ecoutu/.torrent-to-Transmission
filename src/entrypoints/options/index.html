@@ -2,11 +2,11 @@
 
 <html>
 <head>
+    <meta charset="utf-8" />
     <title>.torrent to Transmission Options</title>
 
-    <link rel="stylesheet" type="text/css" href="../css/options.css" />
-    <script type="text/javascript" src="../js/jquery-1.5.2.min.js"></script>
-    <script type="text/javascript" src="../js/options.js"></script>
+    <meta name="manifest.open_in_tab" content="false" />
+    <script type="module" src="./main.ts"></script>
 </head>
 
 <body>
@@ -18,12 +18,12 @@
             <table>
                 <tr id="rpc-url-row">
                     <td class="label">RPC address</td>
-                    <td class="field"><input type="text" id="rpc-url" /></td>
+                    <td class="field"><input type="url" id="rpc-url" /></td>
                     <td id="rpc-test-url"></td>
                 </tr>
                 <tr id="web-url-row">
                     <td class="label">WebUI address</td>
-                    <td class="field"><input type="text" id="web-url" /></td>
+                    <td class="field"><input type="url" id="web-url" /></td>
                 </tr>
                 <tr id="rpc-user-row">
                     <td class="label">Username</td>
@@ -36,7 +36,7 @@
                 </tr>
                 <tr>
                     <td class="label">Refresh rate (seconds)</td>
-                    <td class="field"><input type="text" id="refresh-rate" /></td>
+                    <td class="field"><input type="number" id="refresh-rate" min="1" step="1" /></td>
                 </tr>
             </table>
         </div>
@@ -48,7 +48,7 @@
             <table id="notification-table">
                 <tr>
                     <td class="label">Duration (seconds) - 0 for no dismissal</td>
-                    <td class="field"><input type="text" id="notification-duration" /></td>
+                    <td class="field"><input type="number" id="notification-duration" min="0" step="1" /></td>
                 </tr>
             </table>
         </div>
@@ -90,7 +90,7 @@
     </div>
 
     <div class="footer">
-        <input type="submit" value="Save" />
+        <input type="submit" value="Save" disabled />
         <input type="reset" value="Close" />
     </div>
 </body>

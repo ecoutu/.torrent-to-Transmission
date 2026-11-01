@@ -16,10 +16,11 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 
 ### From Source
 1. Clone or download this repository
-2. Open Chrome and navigate to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the extension directory
-5. The extension will appear in your browser toolbar
+2. Install dependencies and build: `npm install && npm run build`
+3. Open Chrome and navigate to `chrome://extensions/`
+4. Enable "Developer mode" in the top right
+5. Click "Load unpacked" and select the `.output/chrome-mv3` directory
+6. The extension will appear in your browser toolbar
 
 ### Configuration
 1. Click the extension icon in your toolbar
@@ -51,7 +52,7 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 
 ## Requirements
 
-- Chrome browser with Manifest V3 support
+- Chrome 120 or newer
 - Transmission BitTorrent client with RPC enabled
 - Network access to your Transmission instance
 
@@ -112,37 +113,40 @@ If you're security-conscious, you can:
 - **Background**: Service worker for efficient resource usage
 - **Storage**: Uses Chrome's storage API instead of localStorage
 - **Network**: Modern fetch API for HTTP requests
-- **UI Framework**: jQuery for DOM manipulation
+- **Language**: TypeScript, built with [WXT](https://wxt.dev)
+- **UI**: Plain DOM APIs (no UI framework)
+- **Refresh**: Background refresh via `chrome.alarms` (minimum 30 seconds); the popup refreshes at the configured rate while open
 
 ## File Structure
 
 ```
-├── manifest.json           # Extension configuration
-├── html/
-│   ├── list.html           # Popup interface
-│   └── options.html        # Settings page
-├── js/
-│   ├── background.js       # Service worker (background logic)
-│   ├── list.js            # Popup interface logic
-│   ├── options.js         # Settings page logic
-│   ├── torrent.js         # Torrent-specific functions
-│   ├── transmission.js    # Transmission RPC communication
-│   └── jquery-1.5.2.min.js # jQuery library
-├── css/
-│   ├── list.css           # Popup styling
-│   └── options.css        # Settings page styling
-└── img/                   # Extension icons and images
+├── wxt.config.ts                # WXT config (generates manifest.json)
+├── public/img/                  # Extension icons and images
+├── src/
+│   ├── entrypoints/
+│   │   ├── background.ts        # Service worker (context menu, badge, notifications)
+│   │   ├── popup/               # Popup interface (index.html, main.ts, style.css)
+│   │   └── options/             # Settings page (index.html, main.ts, style.css)
+│   └── utils/
+│       ├── transmission.ts      # Transmission RPC communication and shared types
+│       └── format.ts            # Size/speed/ETA formatting
+└── tests/                       # Vitest unit tests
 ```
 
 ## Development
 
-### Building
-No build process required - this is a pure JavaScript extension.
+| Command | Description |
+|---|---|
+| `npm run dev` | Launch Chrome with the extension loaded and hot reload |
+| `npm run build` | Production build in `.output/chrome-mv3` |
+| `npm run zip` | Build a zip for the Chrome Web Store |
+| `npm run compile` | Type-check with `tsc` |
+| `npm test` | Run unit tests |
 
 ### Testing
-1. Load the extension in developer mode
-2. Configure it to point to your Transmission instance
-3. Test right-click functionality on torrent links
+1. Run `npm test` and `npm run compile`
+2. Load `.output/chrome-mv3` in developer mode and point it at your Transmission instance
+3. Test right-click functionality on torrent and magnet links
 4. Verify popup interface and settings work correctly
 
 ### Debugging
@@ -158,7 +162,7 @@ No build process required - this is a pure JavaScript extension.
 - Verify Transmission is running and RPC is enabled
 - Check the RPC URL in extension options
 - Ensure no firewall is blocking the connection
-- Try disabling RPC whitelist in Transmission
+- "forbidden" errors mean Transmission rejected the client: add your machine to `rpc-whitelist` (or disable `rpc-whitelist-enabled`), and if you use a hostname, add it to `rpc-host-whitelist`
 
 **Torrents not appearing in popup**
 - Check that Transmission RPC is responding correctly

@@ -9,7 +9,7 @@ h1.header {
     padding-bottom: 43px;
     padding-left: 75px;
     padding-top: 40px;
-    background: url(../img/icon-small.png) no-repeat;
+    background: url(/img/icon-small.png) no-repeat;
     background-size: 67px;
     background-position: 1px 18px;
 }
