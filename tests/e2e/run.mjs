@@ -6,8 +6,9 @@
     - Transmission RPC at E2E_RPC_URL (default http://127.0.0.1:9091/transmission/rpc)
       with username/password test/test, e.g.:
         docker run -d --name t2t-e2e -p 127.0.0.1:9091:9091 -e USER=test -e PASS=test lscr.io/linuxserver/transmission
-        docker exec t2t-e2e sh -c 'mkdir -p /downloads/complete /downloads/incomplete && chown -R abc:abc /downloads'
-      (the image has no /downloads, and the move tests need writable folders there)
+        docker exec t2t-e2e sh -c 'mkdir -p /downloads/complete /downloads/incomplete /downloads/locked && head -c 1048576 /dev/urandom > /downloads/complete/e2e-data.bin && transmission-create -o /tmp/e2e-data.torrent /downloads/complete/e2e-data.bin >/dev/null && chown -R abc:abc /downloads /tmp/e2e-data.torrent && chown root:root /downloads/locked'
+      (the image has no /downloads; this creates writable folders, a small torrent
+      with real data, and a folder Transmission can't write to, for the move tests)
     - Chrome at CHROME_PATH (default /usr/bin/google-chrome)
 
     Usage: npm run test:e2e
@@ -267,10 +268,10 @@ async function popupFlows(browser, id, options) {
     check('duplicate offers to move it', !!(await popup.$('[data-testid="move-existing"]')));
     await screenshot(popup, 'popup-duplicate');
     await popup.click('[data-testid="move-existing"]');
-    await waitFor(popup, () => document.querySelector('[data-testid="add-result"]')?.textContent.includes('Moving to'));
+    await popup.waitForFunction(() => document.querySelector('[data-testid="add-result"]')?.textContent.includes('Moved to'), { timeout: 10000 }).catch(() => {});
     const moveResult = await popup.$eval('[data-testid="add-result"]', (e) => e.textContent.trim()).catch(() => '');
     const movedDir = await until(() => dirOf('popup-added'), (dir) => dir === defaultDir);
-    check('move button moves the torrent', movedDir === defaultDir, `${movedDir} (popup: ${moveResult})`);
+    check('move button moves the torrent and confirms it', movedDir === defaultDir && moveResult.includes('Moved to default location'), `${movedDir} (popup: ${moveResult})`);
     await popup.click('[data-testid="toggle-add"]');
 
     // "Move to" from the row menu
@@ -306,6 +307,8 @@ async function popupFlows(browser, id, options) {
     const movedBack = await until(() => dirOf('popup-added'), (dir) => dir === defaultDir);
     check('row menu moves back to the default location', movedBack === defaultDir, movedBack);
 
+    await failedMoveFlows(popup, options, rowOf);
+
     await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [] }));
 
     // remove via the row menu with confirmation
@@ -321,6 +324,48 @@ async function popupFlows(browser, id, options) {
 
     check('no popup errors', errors.length === 0, errors.join(' | '));
     await popup.close();
+}
+
+// A move Transmission can't complete: full error on the row, then Retry.
+async function failedMoveFlows(popup, options, rowOf) {
+    const added = await rpc('torrent-add', { filename: '/tmp/e2e-data.torrent', 'download-dir': '/downloads/complete' });
+    const id = (added.arguments?.['torrent-added'] ?? added.arguments?.['torrent-duplicate'])?.id;
+    check('test torrent with data is available (see setup in this file)', !!id, added.result);
+    if (!id) return;
+    const state = async () => (await rpc('torrent-get', { ids: [id], fields: ['status', 'error', 'errorString', 'downloadDir'] })).arguments.torrents[0];
+    await until(state, (t) => t?.status === 6);
+
+    await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [['Locked', '/downloads/locked']] }));
+    await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"] .name')].some((e) => e.textContent === 'e2e-data.bin'), { timeout: 6000 }).catch(() => {});
+    await (await (await rowOf('e2e-data.bin')).$('[data-testid="more"]')).click();
+    await popup.waitForSelector('[data-testid="move-to"]', { visible: true, timeout: 3000 }).catch(() => {});
+    await popup.click('[data-testid="move-to"]');
+    check('move shows progress on the row',
+        await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"]')]
+            .some((e) => e.querySelector('.name').textContent === 'e2e-data.bin' && e.querySelector('[data-testid="move-status"]')),
+        { timeout: 3000 }).then(() => true, () => false));
+
+    await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"]')]
+        .some((e) => e.querySelector('.name').textContent === 'e2e-data.bin' && e.dataset.state === 'error'), { timeout: 15000 }).catch(() => {});
+    const row = await rowOf('e2e-data.bin');
+    const shown = await row.evaluate((e) => {
+        const status = e.querySelector('.status');
+        return { state: e.dataset.state, title: status?.getAttribute('title') ?? '', wraps: getComputedStyle(status).whiteSpace === 'normal' };
+    });
+    check('failed move shows the error on the row', shown.state === 'error' && shown.title.includes('Permission denied'), shown.title);
+    check('error text wraps instead of being cut off', shown.wraps);
+    check('server kept the torrent in place', (await state()).downloadDir === '/downloads/complete');
+    await screenshot(popup, 'popup-move-failed');
+
+    check('errored torrent offers Retry', !!(await row.$('[data-testid="retry"]')));
+    await (await row.$('[data-testid="retry"]')).click();
+    const after = await until(state, (t) => t?.error === 0 && t?.status !== 0);
+    check('Retry clears the error and resumes', after?.error === 0 && after?.status !== 0, JSON.stringify(after));
+    await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"]')]
+        .some((e) => e.querySelector('.name').textContent === 'e2e-data.bin' && e.dataset.state !== 'error'), { timeout: 8000 }).catch(() => {});
+    check('row leaves the error state', (await (await rowOf('e2e-data.bin')).evaluate((e) => e.dataset.state)) !== 'error');
+
+    await rpc('torrent-remove', { ids: [id] });
 }
 
 async function magnetClickFlows(browser, id, options) {

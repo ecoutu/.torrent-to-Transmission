@@ -2,6 +2,7 @@
     import { browser } from 'wxt/browser';
     import Icon from '@/components/Icon.svelte';
     import { samePath, type AddTorrentResult, type BackgroundMessage, type DownloadLocation } from '@/utils/transmission';
+    import { moveTorrent } from './moves.svelte';
 
     let {
         locations,
@@ -30,17 +31,18 @@
 
     async function moveExisting() {
         if (!result?.existing || !moveTarget) return;
+        const { id, name } = result.existing;
         const target = moveTarget;
-        const msg: BackgroundMessage = {
-            method: 'rpc-call',
-            payload: { method: 'torrent-set-location', arguments: { ids: [result.existing.id], location: target, move: true } }
-        };
-        const reply = await browser.runtime.sendMessage(msg).catch(() => null) as { status?: number; data?: { result?: string } } | null;
-        if (reply?.status === 200 && reply.data?.result === 'success') {
-            moved = target;
-            result = { ok: true, title: 'Moving to ' + locationName(target), message: result.existing.name };
+        const label = locationName(target);
+        moved = target;
+        result = { ok: true, title: 'Moving to ' + label + '…', message: name };
+        const status = await moveTorrent(id, target, label);
+        if (status.state === 'moved') {
+            result = { ok: true, title: 'Moved to ' + label, message: name };
+        } else if (status.state === 'moving') {
+            result = { ok: true, title: 'Moving to ' + label + '…', message: status.message ?? '' };
         } else {
-            result = { ok: false, title: 'Couldn\'t move the torrent', message: reply?.data?.result ?? 'Transmission didn\'t respond.' };
+            result = { ok: false, title: 'Couldn\'t move to ' + label, message: status.message ?? '' };
         }
     }
     let input = $state<HTMLInputElement>();

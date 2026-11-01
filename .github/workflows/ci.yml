@@ -50,9 +50,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # the image has no /downloads; moving torrents needs writable folders there
-      - name: Prepare Transmission download folders
-        run: docker exec ${{ job.services.transmission.id }} sh -c 'mkdir -p /downloads/complete /downloads/incomplete && chown -R abc:abc /downloads'
+      # The image has no /downloads. Create writable folders, a small torrent
+      # with real data, and a folder Transmission can't write to (failed moves).
+      - name: Prepare Transmission test data
+        run: docker exec ${{ job.services.transmission.id }} sh -c 'mkdir -p /downloads/complete /downloads/incomplete /downloads/locked && head -c 1048576 /dev/urandom > /downloads/complete/e2e-data.bin && transmission-create -o /tmp/e2e-data.torrent /downloads/complete/e2e-data.bin >/dev/null && chown -R abc:abc /downloads /tmp/e2e-data.torrent && chown root:root /downloads/locked'
       - run: npm run test:e2e
         env:
           E2E_SCREENSHOTS: e2e-screenshots
