@@ -351,7 +351,16 @@ async function offlineFlows(browser, id, options) {
     await screenshot(popup, 'popup-error');
     check('badge shows offline', (await options.evaluate(() => chrome.action.getBadgeText({}))) === '?');
 
+    // the options page polls the connection status without user action
+    await options.bringToFront();
+    await options.waitForFunction(() => document.querySelector('[data-testid="connection-status"]')?.dataset.kind === 'error', { timeout: 12000 }).catch(() => {});
+    check('options status updates to offline on its own', (await statusKind(options)) === 'error');
+
     await options.evaluate((rpcURL) => chrome.storage.local.set({ rpcURL }), RPC);
+    await options.waitForFunction(() => document.querySelector('[data-testid="connection-status"]')?.dataset.kind === 'ok', { timeout: 12000 }).catch(() => {});
+    check('options status recovers on its own', (await statusKind(options)) === 'ok');
+
+    await popup.bringToFront();
     await popup.waitForSelector('[data-testid="torrent"]', { timeout: 8000 }).catch(() => {});
     check('popup recovers when server returns', (await popup.$$('[data-testid="torrent"]')).length === 1);
     await popup.close();

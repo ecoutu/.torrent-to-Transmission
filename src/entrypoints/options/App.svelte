@@ -56,6 +56,7 @@
     let toastTimer: ReturnType<typeof setTimeout> | undefined;
     let loaded = $state(false);
     let testSeq = 0;
+    let testing = false;
 
     const dirty = $derived(
         rpcURL !== saved.rpcURL || rpcUser !== saved.rpcUser || rpcPass !== saved.rpcPass || webURL !== saved.webURL
@@ -94,7 +95,13 @@
             grantedOrigins.includes('<all_urls>');
     }
 
-    async function testConnection() {
+    /*
+        Check the saved server settings. Background checks (quiet) keep the
+        current status on screen until the result arrives and are skipped
+        while another check is running.
+    */
+    async function testConnection({ quiet = false } = {}) {
+        if (quiet && testing) return;
         const seq = ++testSeq;
         const pattern = originPattern(saved.rpcURL);
         if (!pattern) {
@@ -106,8 +113,13 @@
             status = { kind: 'permission' };
             return;
         }
-        status = { kind: 'testing' };
-        const { status: code, data } = await rpcRequest<SessionInfo['arguments']>({ method: 'session-get' });
+        if (!quiet) {
+            status = { kind: 'testing' };
+        }
+        testing = true;
+        const { status: code, data } = await rpcRequest<SessionInfo['arguments']>({ method: 'session-get' }).finally(() => {
+            testing = false;
+        });
         if (seq !== testSeq) return;
         if (code === 200 && data?.result === 'success' && data.arguments) {
             const args = data.arguments as SessionInfo['arguments'] & { version?: string };
@@ -183,7 +195,43 @@
         persist({ 'additional-paths': $state.snapshot(locations) as DownloadLocation[] });
     }
 
-    onMount(async () => {
+    // Poll the connection status at the popup refresh rate while the page is visible.
+    function startStatusPolling() {
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const schedule = () => {
+            clearTimeout(timer);
+            timer = setTimeout(tick, Math.max(1, refreshRate || DEFAULTS.refreshRate) * 1000);
+        };
+        const tick = () => {
+            if (!document.hidden && !dirty) {
+                testConnection({ quiet: true });
+            }
+            schedule();
+        };
+        const onVisibility = () => {
+            if (!document.hidden && !dirty) {
+                testConnection({ quiet: true });
+                schedule();
+            }
+        };
+        const onGranted = () => {
+            refreshGranted().then(() => testConnection({ quiet: true }));
+        };
+
+        document.addEventListener('visibilitychange', onVisibility);
+        browser.permissions.onAdded.addListener(onGranted);
+        browser.permissions.onRemoved.addListener(onGranted);
+        schedule();
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('visibilitychange', onVisibility);
+            browser.permissions.onAdded.removeListener(onGranted);
+            browser.permissions.onRemoved.removeListener(onGranted);
+        };
+    }
+
+    async function load() {
         const items = await browser.storage.local.get([
             'rpcURL', 'rpcUser', 'rpcPass', 'webURL', 'clickMagnets', 'sendTorrentFile', 'displayNotification',
             'notificationDuration', 'refreshRate', 'additional-paths'
@@ -201,10 +249,12 @@
         refreshRate = Number(items.refreshRate ?? DEFAULTS.refreshRate);
         locations = items['additional-paths'] ?? [];
         loaded = true;
-
-        browser.permissions.onAdded.addListener(refreshGranted);
-        browser.permissions.onRemoved.addListener(refreshGranted);
         testConnection();
+    }
+
+    onMount(() => {
+        load();
+        return startStatusPolling();
     });
 </script>
 
@@ -294,7 +344,7 @@
                     </div>
                     <div class="buttons">
                         {#if !dirty && status.kind !== 'permission'}
-                            <button type="button" class="btn" data-testid="test-connection" onclick={testConnection}>Test again</button>
+                            <button type="button" class="btn" data-testid="test-connection" onclick={() => testConnection()}>Test again</button>
                         {/if}
                         <button type="submit" class="btn primary" data-testid="save-server" disabled={!dirty && status.kind !== 'permission'}>
                             {status.kind === 'permission' && !dirty ? 'Connect' : 'Save & connect'}
