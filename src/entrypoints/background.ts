@@ -1,15 +1,20 @@
 import { browser, type Browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import {
+    ALL_SITES,
     DEFAULTS,
     TORRENT_FIELDS,
     arrayBufferToBase64,
     badgeText,
     describeStatus,
     diffTorrents,
+    hasOrigins,
+    isAddableUrl,
     rpcRequest,
     statusConstants,
+    type AddTorrentResult,
     type BackgroundMessage,
+    type DownloadLocation,
     type SessionInfo,
     type SessionStats,
     type Settings,
@@ -18,11 +23,15 @@ import {
 } from '@/utils/transmission';
 
 const MENU_ID = 'torrent-to-transmission';
+// Child menu items: MENU_DEFAULT_ID, then MENU_LOCATION_PREFIX + index.
+const MENU_DEFAULT_ID = 'location-default';
+const MENU_LOCATION_PREFIX = 'location-';
 const ALARM_NAME = 'update';
 // chrome.alarms does not fire more often than every 30 seconds. The popup
 // polls at the configured refresh rate while it is open.
 const MIN_ALARM_MINUTES = 0.5;
 const ACTION_REFRESH_DELAY_MS = 1000;
+const MAGNET_SCRIPT_ID = 'magnet-click';
 
 export default defineBackground(() => {
     /*
@@ -38,20 +47,25 @@ export default defineBackground(() => {
         }
         await browser.storage.local.set(toSet);
 
-        await browser.contextMenus.removeAll();
-        browser.contextMenus.create({
-            id: MENU_ID,
-            title: '.torrent To Transmission',
-            contexts: ['link']
-        });
-
+        await buildContextMenu();
         await scheduleAlarm();
+        await syncMagnetScript();
         update();
     });
 
     browser.runtime.onStartup.addListener(async () => {
         await scheduleAlarm();
+        await syncMagnetScript();
         update();
+    });
+
+    // Host access is granted from the options page or popup.
+    browser.permissions.onAdded.addListener(() => {
+        syncMagnetScript();
+        update();
+    });
+    browser.permissions.onRemoved.addListener(() => {
+        syncMagnetScript();
     });
 
     browser.alarms.onAlarm.addListener((alarm) => {
@@ -66,6 +80,12 @@ export default defineBackground(() => {
         }
         if (changes.refreshRate) {
             scheduleAlarm(changes.refreshRate.newValue as number);
+        }
+        if (changes.clickMagnets) {
+            syncMagnetScript();
+        }
+        if (changes['additional-paths']) {
+            buildContextMenu();
         }
         if (changes.rpcURL || changes.rpcUser || changes.rpcPass) {
             browser.storage.session.remove('sessionId');
@@ -94,15 +114,72 @@ export default defineBackground(() => {
             });
             return true;
         }
+        if (msg.method === 'add-torrent') {
+            // extension pages (popup, possibly opened in a tab) vs. the content script
+            const fromExtensionPage = !!sender.url?.startsWith(browser.runtime.getURL('/'));
+            if (!fromExtensionPage) {
+                // magnet click content script: notify, no response needed
+                if (/^magnet:/i.test(msg.url)) {
+                    addTorrent(msg.url);
+                }
+                return false;
+            }
+            // popup: answer with the result instead of a notification
+            if (!isAddableUrl(msg.url)) {
+                sendResponse({ ok: false, title: 'Not a torrent link', message: 'Paste a magnet link or an http(s) .torrent URL.' });
+                return false;
+            }
+            addTorrent(msg.url, msg.downloadDir, false).then(sendResponse);
+            return true;
+        }
         return false;
     });
 
-    browser.contextMenus.onClicked.addListener((info: Browser.contextMenus.OnClickData) => {
-        if (info.menuItemId === MENU_ID && info.linkUrl) {
+    browser.contextMenus.onClicked.addListener(async (info: Browser.contextMenus.OnClickData) => {
+        if (!info.linkUrl) {
+            return;
+        }
+        const id = String(info.menuItemId);
+        if (id === MENU_ID || id === MENU_DEFAULT_ID) {
             addTorrent(info.linkUrl);
+        } else if (id.startsWith(MENU_LOCATION_PREFIX)) {
+            const locations = await getLocations();
+            const location = locations[Number(id.slice(MENU_LOCATION_PREFIX.length))];
+            addTorrent(info.linkUrl, location?.[1]);
         }
     });
 });
+
+async function getLocations(): Promise<DownloadLocation[]> {
+    const items = await browser.storage.local.get('additional-paths') as Partial<Settings>;
+    return (items['additional-paths'] || []).filter(([, directory]) => directory);
+}
+
+/*
+    "Send to Transmission" on links; a submenu of download locations when
+    any are configured.
+*/
+async function buildContextMenu() {
+    const locations = await getLocations();
+    await browser.contextMenus.removeAll();
+    browser.contextMenus.create({
+        id: MENU_ID,
+        title: 'Send to Transmission',
+        contexts: ['link']
+    });
+    if (!locations.length) {
+        return;
+    }
+    browser.contextMenus.create({ id: MENU_DEFAULT_ID, parentId: MENU_ID, title: 'Default location', contexts: ['link'] });
+    locations.forEach(([label, directory], index) => {
+        browser.contextMenus.create({
+            id: MENU_LOCATION_PREFIX + index,
+            parentId: MENU_ID,
+            title: label || directory,
+            contexts: ['link']
+        });
+    });
+}
 
 async function scheduleAlarm(refreshRate?: number) {
     if (refreshRate === undefined) {
@@ -112,6 +189,30 @@ async function scheduleAlarm(refreshRate?: number) {
     await browser.alarms.create(ALARM_NAME, {
         periodInMinutes: Math.max(MIN_ALARM_MINUTES, seconds / 60)
     });
+}
+
+/*
+    Register the magnet click handler only while the option is on and access
+    to all sites has been granted.
+*/
+async function syncMagnetScript() {
+    const { clickMagnets } = await browser.storage.local.get('clickMagnets') as Partial<Settings>;
+    const wanted = !!clickMagnets && await hasOrigins(ALL_SITES);
+    const registered = (await browser.scripting.getRegisteredContentScripts({ ids: [MAGNET_SCRIPT_ID] })).length > 0;
+
+    if (wanted && !registered) {
+        await browser.scripting.registerContentScripts([{
+            id: MAGNET_SCRIPT_ID,
+            js: ['content-scripts/magnet.js'],
+            matches: ALL_SITES,
+            runAt: 'document_start',
+            allFrames: true,
+            // re-registered from onStartup
+            persistAcrossSessions: false
+        }]);
+    } else if (!wanted && registered) {
+        await browser.scripting.unregisterContentScripts({ ids: [MAGNET_SCRIPT_ID] });
+    }
 }
 
 /*
@@ -129,8 +230,8 @@ async function showNotification(title: string, text: string) {
         iconUrl: browser.runtime.getURL('/img/icon-large.png'),
         title: title,
         message: text || '',
-        // 0 means "don't dismiss automatically"
-        requireInteraction: timeout === 0
+        // 0 means "don't dismiss automatically" (not supported by Firefox)
+        ...(import.meta.env.FIREFOX ? {} : { requireInteraction: timeout === 0 })
     });
 
     if (timeout > 0) {
@@ -139,12 +240,28 @@ async function showNotification(title: string, text: string) {
 }
 
 /*
-    Add a torrent from a link (magnet or .torrent URL).
+    Add a torrent from a link (magnet or .torrent URL), optionally into a
+    specific download directory. Shows a notification with the outcome
+    unless notify is false.
 */
-async function addTorrent(linkUrl: string) {
+async function addTorrent(linkUrl: string, downloadDir?: string, notify = true): Promise<AddTorrentResult> {
+    const result = await sendTorrent(linkUrl, downloadDir);
+    if (notify) {
+        showNotification(result.title, result.message);
+    }
+    if (result.ok) {
+        update();
+    }
+    return result;
+}
+
+async function sendTorrent(linkUrl: string, downloadDir?: string): Promise<AddTorrentResult> {
     const { sendTorrentFile, rpcURL } = await browser.storage.local.get(['sendTorrentFile', 'rpcURL']) as Partial<Settings>;
     const isMagnet = /^magnet:/i.test(linkUrl);
     const args: Record<string, unknown> = { paused: false };
+    if (downloadDir) {
+        args['download-dir'] = downloadDir;
+    }
 
     if (isMagnet || !sendTorrentFile) {
         args.filename = linkUrl;
@@ -158,8 +275,11 @@ async function addTorrent(linkUrl: string) {
             args.metainfo = arrayBufferToBase64(await response.arrayBuffer());
         } catch (err) {
             console.error('Error downloading torrent file:', err);
-            showNotification('failed to download torrent file', err instanceof Error ? err.message : String(err));
-            return;
+            return {
+                ok: false,
+                title: 'Couldn\'t download the .torrent file',
+                message: err instanceof Error ? err.message : String(err)
+            };
         }
     }
 
@@ -167,25 +287,44 @@ async function addTorrent(linkUrl: string) {
     const { status, data } = await rpcRequest<AddResult>({ method: 'torrent-add', arguments: args });
 
     if (status !== 200 || !data) {
-        showNotification('unable to contact ' + (rpcURL || DEFAULTS.rpcURL), describeStatus(status));
-        return;
+        return {
+            ok: false,
+            title: 'Can\'t reach Transmission',
+            message: (rpcURL || DEFAULTS.rpcURL) + ': ' + describeStatus(status)
+        };
+    }
+    if (data.result !== 'success') {
+        return { ok: false, title: 'Transmission couldn\'t add the torrent', message: data.result };
     }
 
-    if (data.result === 'success') {
-        const added = data.arguments?.['torrent-added'];
-        const duplicate = data.arguments?.['torrent-duplicate'];
-        if (added) {
-            showNotification('torrent started', added.name);
-        } else if (duplicate) {
-            showNotification('torrent already added', duplicate.name);
-        } else {
-            showNotification('torrent started', '');
-        }
-    } else {
-        showNotification('failed to start torrent', data.result);
+    const added = data.arguments?.['torrent-added'];
+    const duplicate = data.arguments?.['torrent-duplicate'];
+    if (duplicate && !added) {
+        return describeDuplicate(duplicate, downloadDir);
     }
+    return { ok: true, title: 'Torrent added', message: added?.name ?? '' };
+}
 
-    update();
+/*
+    Transmission ignores download-dir for a torrent it already has, so say
+    where it actually is (torrent-add only returns id, name and hash).
+*/
+async function describeDuplicate(duplicate: Pick<Torrent, 'id' | 'name'>, downloadDir?: string): Promise<AddTorrentResult> {
+    const { data } = await rpcRequest<{ torrents: Pick<Torrent, 'downloadDir'>[] }>({
+        method: 'torrent-get',
+        arguments: { ids: [duplicate.id], fields: ['downloadDir'] }
+    });
+    const currentDir = data?.arguments?.torrents[0]?.downloadDir ?? '';
+    const { 'session-info': session } = await browser.storage.local.get('session-info') as { 'session-info'?: SessionInfo };
+    const requestedDir = downloadDir || (session?.arguments['download-dir'] as string | undefined);
+
+    return {
+        ok: true,
+        title: 'Already in Transmission',
+        message: duplicate.name + (currentDir ? ' · saved in ' + currentDir : ''),
+        existing: { id: duplicate.id, name: duplicate.name, downloadDir: currentDir },
+        requestedDir
+    };
 }
 
 /*
@@ -245,7 +384,7 @@ async function doUpdate() {
         const { torrents: previous = {} } = await browser.storage.local.get('torrents') as { torrents?: TorrentMap };
         const diff = diffTorrents(previous, torrents, statusConstants(rpcVersion));
         for (const torrent of diff.completed) {
-            showNotification('torrent complete', torrent.name);
+            showNotification('Download complete', torrent.name);
         }
         toSet.torrents = diff.current;
         setOnlineBadge(diff.downloading, diff.seeding);

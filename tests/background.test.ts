@@ -12,10 +12,35 @@ function rpcBody(init: RequestInit | undefined) {
     return JSON.parse(String(init?.body));
 }
 
+const scripting = {
+    registered: [] as string[],
+    allSites: false
+};
+
+function stubPermissionsAndScripting() {
+    scripting.registered = [];
+    scripting.allSites = false;
+    vi.spyOn(fakeBrowser.contextMenus, 'removeAll').mockResolvedValue(undefined as never);
+    vi.spyOn(fakeBrowser.contextMenus, 'create').mockReturnValue('' as never);
+    vi.spyOn(fakeBrowser.permissions.onAdded, 'addListener').mockImplementation(() => {});
+    vi.spyOn(fakeBrowser.permissions.onRemoved, 'addListener').mockImplementation(() => {});
+    vi.spyOn(fakeBrowser.permissions, 'contains').mockImplementation(async () => scripting.allSites);
+    vi.spyOn(fakeBrowser.scripting, 'getRegisteredContentScripts').mockImplementation(
+        async () => scripting.registered.map((id) => ({ id })) as never);
+    vi.spyOn(fakeBrowser.scripting, 'registerContentScripts').mockImplementation(async (scripts) => {
+        scripting.registered.push(...scripts.map((s) => s.id));
+    });
+    vi.spyOn(fakeBrowser.scripting, 'unregisterContentScripts').mockImplementation(async () => {
+        scripting.registered = [];
+    });
+}
+
 describe('context menu: add torrent', () => {
     const fetchMock = vi.fn<typeof fetch>();
     const notifications: { title: string; message: string }[] = [];
     let onMenuClick: ClickListener;
+    let onMessage: (msg: unknown, sender: { id?: string; url?: string; tab?: unknown }, sendResponse: (r: unknown) => void) => unknown;
+    const popupSender = () => ({ id: fakeBrowser.runtime.id, url: fakeBrowser.runtime.getURL('/popup.html'), tab: { id: 1 } });
 
     beforeEach(async () => {
         fakeBrowser.reset();
@@ -31,7 +56,13 @@ describe('context menu: add torrent', () => {
             if (!headers[SESSION_HEADER]) {
                 return new Response('', { status: 409, headers: { [SESSION_HEADER]: 'sid' } });
             }
-            const { method } = rpcBody(init);
+            const { method, arguments: args } = rpcBody(init);
+            if (method === 'torrent-add' && String(args.filename).includes('duplicate')) {
+                return Response.json({ result: 'success', arguments: { 'torrent-duplicate': { id: 7, name: 'Sintel' } } });
+            }
+            if (method === 'torrent-get' && args.ids?.[0] === 7) {
+                return Response.json({ result: 'success', arguments: { torrents: [{ downloadDir: '/data/movies' }] } });
+            }
             if (method === 'torrent-add') {
                 return Response.json({ result: 'success', arguments: { 'torrent-added': { id: 1, name: 'Debian ISO' } } });
             }
@@ -53,9 +84,13 @@ describe('context menu: add torrent', () => {
             notificationDuration: 0,
             sendTorrentFile: false
         });
-        // contextMenus isn't implemented by fake-browser
+        // contextMenus, permissions and scripting aren't implemented by fake-browser
         vi.spyOn(fakeBrowser.contextMenus.onClicked, 'addListener').mockImplementation((listener) => {
             onMenuClick = listener as ClickListener;
+        });
+        stubPermissionsAndScripting();
+        vi.spyOn(fakeBrowser.runtime.onMessage, 'addListener').mockImplementation((listener) => {
+            onMessage = listener as typeof onMessage;
         });
         background.main();
     });
@@ -78,7 +113,55 @@ describe('context menu: add torrent', () => {
         // 409 handshake + one retry, no duplicate add
         expect(adds).toHaveLength(2);
         expect(rpcBody(adds[1]![1]).arguments).toEqual({ paused: false, filename: magnet });
-        expect(notifications).toEqual([{ title: 'torrent started', message: 'Debian ISO' }]);
+        expect(notifications).toEqual([{ title: 'Torrent added', message: 'Debian ISO' }]);
+    });
+
+    it('sends to the chosen download location from the submenu', async () => {
+        await fakeBrowser.storage.local.set({ 'additional-paths': [['Movies', '/data/movies'], ['TV', '/data/tv']] });
+        onMenuClick({ menuItemId: 'location-1', linkUrl: 'magnet:?xt=urn:btih:abc', editable: false, pageUrl: 'https://example.com' });
+        await vi.waitFor(() => expect(notifications.length).toBeGreaterThan(0));
+
+        const add = fetchMock.mock.calls.filter(([, init]) => rpcBody(init).method === 'torrent-add').at(-1)!;
+        expect(rpcBody(add[1]).arguments).toMatchObject({ filename: 'magnet:?xt=urn:btih:abc', 'download-dir': '/data/tv' });
+    });
+
+    it('answers popup add requests without a notification', async () => {
+        const reply = await new Promise((resolve) => {
+            onMessage({ method: 'add-torrent', url: 'magnet:?xt=urn:btih:abc', downloadDir: '/data/movies' }, popupSender(), resolve);
+        });
+        expect(reply).toEqual({ ok: true, title: 'Torrent added', message: 'Debian ISO' });
+        expect(notifications).toEqual([]);
+    });
+
+    it('only accepts magnet links from web pages (magnet click script)', async () => {
+        const sender = { id: fakeBrowser.runtime.id, url: 'https://example.com/', tab: { id: 2 } };
+        expect(onMessage({ method: 'add-torrent', url: 'https://evil.example/x.torrent' }, sender, () => {})).toBe(false);
+        onMessage({ method: 'add-torrent', url: 'magnet:?xt=urn:btih:abc' }, sender, () => {});
+        await vi.waitFor(() => expect(notifications).toEqual([{ title: 'Torrent added', message: 'Debian ISO' }]));
+        const adds = fetchMock.mock.calls.filter(([, init]) => rpcBody(init).method === 'torrent-add');
+        expect(adds.every(([, init]) => rpcBody(init).arguments.filename === 'magnet:?xt=urn:btih:abc')).toBe(true);
+    });
+
+    it('reports where a duplicate already is', async () => {
+        await fakeBrowser.storage.local.set({ 'session-info': { result: 'success', arguments: { 'rpc-version': 17, 'download-dir': '/data/default' } } });
+        const reply = await new Promise((resolve) => {
+            onMessage({ method: 'add-torrent', url: 'magnet:?xt=urn:btih:duplicate' }, popupSender(), resolve);
+        });
+        expect(reply).toEqual({
+            ok: true,
+            title: 'Already in Transmission',
+            message: 'Sintel · saved in /data/movies',
+            existing: { id: 7, name: 'Sintel', downloadDir: '/data/movies' },
+            requestedDir: '/data/default'
+        });
+    });
+
+    it('rejects popup input that is not a torrent link', async () => {
+        const reply = await new Promise((resolve) => {
+            onMessage({ method: 'add-torrent', url: 'javascript:alert(1)' }, popupSender(), resolve);
+        });
+        expect(reply).toMatchObject({ ok: false });
+        expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('downloads and sends the .torrent file with cookies when enabled', async () => {
@@ -89,5 +172,34 @@ describe('context menu: add torrent', () => {
         expect(download![1]).toMatchObject({ credentials: 'include' });
         const add = fetchMock.mock.calls.filter(([, init]) => init?.body && rpcBody(init).method === 'torrent-add').at(-1)!;
         expect(rpcBody(add[1]).arguments).toEqual({ paused: false, metainfo: btoa('d8:') });
+    });
+});
+
+describe('magnet click content script', () => {
+    beforeEach(() => {
+        fakeBrowser.reset();
+        vi.stubGlobal('fetch', vi.fn(async () => Response.json({ result: 'error' })));
+        stubPermissionsAndScripting();
+        vi.spyOn(fakeBrowser.contextMenus.onClicked, 'addListener').mockImplementation(() => {});
+        background.main();
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it('registers only when enabled and all-sites access is granted', async () => {
+        await fakeBrowser.storage.local.set({ clickMagnets: true });
+        await vi.waitFor(() => expect(fakeBrowser.permissions.contains).toHaveBeenCalled());
+        expect(scripting.registered).toEqual([]);
+
+        scripting.allSites = true;
+        await fakeBrowser.storage.local.set({ clickMagnets: false });
+        await fakeBrowser.storage.local.set({ clickMagnets: true });
+        await vi.waitFor(() => expect(scripting.registered).toEqual(['magnet-click']));
+
+        await fakeBrowser.storage.local.set({ clickMagnets: false });
+        await vi.waitFor(() => expect(scripting.registered).toEqual([]));
     });
 });

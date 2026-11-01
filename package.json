@@ -1,18 +1,31 @@
 {
   "name": "torrent-to-transmission",
-  "description": "Automagically add, access and control torrents with Chrome.",
+  "description": "Automagically add, access and control torrents with Chrome and Firefox.",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
+    "dev:firefox": "wxt -b firefox",
     "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
-    "compile": "tsc --noEmit",
+    "zip:firefox": "wxt zip -b firefox",
+    "compile": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "test": "vitest run",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "@wxt-dev/module-svelte": "^2.0.5",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
+    "puppeteer-core": "^24.43.1",
+    "semantic-release": "^25.0.9",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
     "wxt": "^0.21.5"

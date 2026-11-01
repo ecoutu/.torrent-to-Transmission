@@ -4,13 +4,18 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 
 ## Features
 
-- **Right-click Integration**: Right-click on any torrent link or magnet link to add it directly to Transmission
-- **Popup Interface**: View and manage your torrents from a convenient popup window
-- **Real-time Updates**: Monitor download/upload speeds and torrent status
-- **Notification Support**: Get desktop notifications when torrents complete
-- **Turtle Mode**: Toggle Transmission's alternative speed limits
-- **Custom Paths**: Configure additional download paths
-- **WebUI Access**: Quick access to Transmission's web interface
+- **Send links from any page**: right-click a magnet or .torrent link and choose **Send to Transmission**, optionally into one of your download locations. You can also make plain clicks on magnet links go to Transmission.
+- **Add from the popup**: paste a magnet link or .torrent URL.
+- **Manage torrents**: pause, resume, verify, reorder the queue, or remove (with or without deleting files), filtered by state and searchable.
+- **Live status**: speeds, progress, time left and ratio, plus a toolbar badge with downloading/seeding counts.
+- **Notifications** when a torrent is added or finishes downloading.
+- **Turtle mode**: toggle Transmission's alternative speed limits.
+- **Light and dark themes** that follow your system.
+
+| Popup | Settings |
+|---|---|
+| ![Popup](screens/list.png) | ![Settings](screens/options.png) |
+| ![Popup, dark](screens/list-dark.png) | ![Settings, dark](screens/options-dark.png) |
 
 ## Installation
 
@@ -22,37 +27,33 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 5. Click "Load unpacked" and select the `.output/chrome-mv3` directory
 6. The extension will appear in your browser toolbar
 
+For Firefox, run `npm run build:firefox`, open `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on…" and select `.output/firefox-mv3/manifest.json`.
+
 ### Configuration
-1. Click the extension icon in your toolbar
-2. Click the "Options" link to configure:
-   - **RPC URL**: Your Transmission RPC endpoint (default: `http://localhost:9091/transmission/rpc`)
-   - **Web URL**: Your Transmission web interface URL (default: `http://localhost:9091`)
-   - **Username/Password**: If your Transmission requires authentication
-   - **Notification Settings**: Enable/disable notifications and set duration
-   - **Refresh Rate**: How often to update torrent status (in seconds)
-   - **Additional Paths**: Configure custom download directories
+1. Click the extension icon, then the gear icon to open **Settings**.
+2. Under **Transmission server**, enter the RPC address (default `http://localhost:9091/transmission/rpc`) and username/password if Transmission requires them, then click **Save & connect**. Your browser asks for permission to reach that server, and the page shows whether the connection works.
+3. Everything else saves as you change it:
+   - **Adding torrents**: send magnet links on click, download .torrent files in the browser (for private trackers), and **download locations** (named folders on the server)
+   - **Notifications**: on/off and how long they stay
+   - **Updates**: how often the popup refreshes
 
 ## Usage
 
-### Adding Torrents
-- **Method 1**: Right-click on any torrent link and select ".torrent To Transmission"
-- **Method 2**: Right-click on magnet links and select ".torrent To Transmission"
+### Adding torrents
+- Right-click a magnet or .torrent link and choose **Send to Transmission**. If you've added download locations, pick one from the submenu.
+- Or click **+** in the popup and paste a link.
+- Or turn on **Send magnet links when clicked**, then just click magnet links. Hold Ctrl/Shift/Alt/⌘ to open them normally.
 
-### Managing Torrents
-- Click the extension icon to view the popup interface
-- Use the navigation tabs to filter torrents (All, Downloading, Seeding, Paused)
-- Control individual torrents with pause/resume/remove buttons
-- Use "Pause All" or "Resume All" for bulk operations
-- Click the turtle icon to toggle alternative speed limits
-
-### Monitoring
-- View real-time download/upload speeds in the popup
-- Get desktop notifications when torrents complete (if enabled)
-- Monitor torrent progress with visual progress bars
+### Managing torrents
+- Filter with the **All / Downloading / Seeding / Paused** tabs. A search box appears once you have more than a handful of torrents.
+- Each row has pause/resume and a **⋯** menu with *Move up/down in queue*, *Verify local data*, *Move to* (your download locations) and *Remove…*. Removing asks whether to keep or delete the downloaded files.
+- Sending a torrent Transmission already has doesn't move it. The extension tells you where it's saved, and the popup offers **Move to …** if you picked a different location.
+- **Resume all** / **Pause all** at the bottom apply to every torrent.
+- The turtle button toggles alternative speed limits, and the arrow button opens Transmission's web interface.
 
 ## Requirements
 
-- Chrome 120 or newer
+- Chrome 120 or newer, or Firefox 140 or newer
 - Transmission BitTorrent client with RPC enabled
 - Network access to your Transmission instance
 
@@ -81,31 +82,21 @@ This extension requires the following permissions:
 - **notifications**: To show desktop notifications
 - **storage**: To save your settings and torrent data
 - **alarms**: To periodically update torrent status
-- **host_permissions**: To communicate with your Transmission server
+- **scripting**: To enable the optional magnet link click handler
 
-### Why Host Permissions Are Required
+### Host access is opt-in
 
-The extension requests access to `http://*/*` and `https://*/*` for these specific reasons:
+Website access is requested at runtime (`optional_host_permissions`), not at install:
 
-1. **Transmission Server Communication**: The extension needs to connect to your Transmission RPC endpoint, which could be running on any domain or IP address (localhost, local network IP, remote server, etc.)
+1. **Your Transmission server only**: when you click **Save** in the options, the browser asks for access to the host in your RPC address (e.g. `192.168.1.100`). This is all the extension needs by default.
+2. **All sites**: only requested if you enable **Send .torrent file** (to download the .torrent from the site you're browsing, with your login cookies) or **Send magnet links when clicked** (to detect clicks on magnet links).
 
-2. **Flexible Server Configuration**: Users may run Transmission on:
-   - Local servers (`http://localhost:9091`, `http://192.168.1.100:9091`)
-   - Remote servers (`https://myserver.com:9091`)
-   - Custom domains or ports
-
-3. **Torrent File Downloads**: When you choose to send actual torrent files (instead of magnet links), the extension needs to download the .torrent file from the website you're browsing
+If access is missing, the popup shows an **Allow access** button. Existing users updating from 1.1.x keep the access they already granted.
 
 **Important Security Notes:**
-- The extension ONLY communicates with URLs you explicitly configure in the options
+- The extension ONLY communicates with URLs you explicitly configure in the options, plus .torrent links you choose to send
 - No data is sent to any third-party servers
-- All communication is limited to your Transmission server and torrent file downloads
 - You can review the source code to verify these claims
-
-If you're security-conscious, you can:
-- Run Transmission on localhost only
-- Use HTTPS for your Transmission server
-- Review the network requests in Chrome DevTools
 
 ## Technical Details
 
@@ -114,36 +105,53 @@ If you're security-conscious, you can:
 - **Storage**: Uses Chrome's storage API instead of localStorage
 - **Network**: Modern fetch API for HTTP requests
 - **Language**: TypeScript, built with [WXT](https://wxt.dev)
-- **UI**: Plain DOM APIs (no UI framework)
+- **UI**: [Svelte 5](https://svelte.dev) components with a shared theme (`src/assets/theme.css`), light/dark via `prefers-color-scheme`
 - **Refresh**: Background refresh via `chrome.alarms` (minimum 30 seconds); the popup refreshes at the configured rate while open
 
 ## File Structure
 
 ```
 ├── wxt.config.ts                # WXT config (generates manifest.json)
-├── public/img/                  # Extension icons and images
+├── public/img/                  # Extension icons
 ├── src/
+│   ├── assets/theme.css         # Design tokens (light/dark) and base controls
+│   ├── components/              # Shared Svelte components (Icon, Toggle)
 │   ├── entrypoints/
 │   │   ├── background.ts        # Service worker (context menu, badge, notifications)
-│   │   ├── popup/               # Popup interface (index.html, main.ts, style.css)
-│   │   └── options/             # Settings page (index.html, main.ts, style.css)
+│   │   ├── magnet.content.ts    # Optional magnet-click handler (registered at runtime)
+│   │   ├── popup/               # Popup (App, TorrentRow, AddTorrent, ConnectionState)
+│   │   └── options/             # Settings page (App)
 │   └── utils/
 │       ├── transmission.ts      # Transmission RPC communication and shared types
-│       └── format.ts            # Size/speed/ETA formatting
-└── tests/                       # Vitest unit tests
+│       └── format.ts            # Size/speed/ETA formatting and torrent status text
+└── tests/                       # Vitest unit tests and the e2e suite (tests/e2e)
 ```
 
 ## Development
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Launch Chrome with the extension loaded and hot reload |
-| `npm run build` | Production build in `.output/chrome-mv3` |
-| `npm run zip` | Build a zip for the Chrome Web Store |
-| `npm run compile` | Type-check with `tsc` |
+| `npm run dev` / `dev:firefox` | Launch Chrome / Firefox with the extension loaded and hot reload |
+| `npm run build` / `build:firefox` | Production build in `.output/chrome-mv3` / `.output/firefox-mv3` |
+| `npm run zip` / `zip:firefox` | Build a zip for the Chrome Web Store / addons.mozilla.org (plus a sources zip) |
+| `npm run compile` | Type-check with `tsc` and `svelte-check` |
 | `npm test` | Run unit tests |
+| `npm run test:e2e` | Run end-to-end tests in Chrome against a Transmission server (see `tests/e2e/run.mjs`) |
 
-CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull request. On merge to `master` it also builds the Chrome Web Store zip and attaches it to the workflow run as an artifact.
+CI (`.github/workflows/ci.yml`) runs type-check, unit tests, both browser builds, a `web-ext` lint of the Firefox build and the end-to-end suite (against a Transmission service container) on every pull request. On merge to `master` it then runs the release (below).
+
+### Releasing
+
+Releases are automated with [semantic-release](https://semantic-release.gitbook.io/). Every merge to `master` that passes CI:
+
+1. Determines the next version from [Conventional Commits](https://www.conventionalcommits.org/) since the last tag (`fix:` → patch, `feat:` → minor, `feat!:` / `BREAKING CHANGE:` → major; `ci:`, `docs:`, `chore:` etc. don't release)
+2. Updates `package.json` and `CHANGELOG.md` and commits them as `chore(release): x.y.z`
+3. Builds the Chrome and Firefox zips, creates a GitHub release with them, and comments on the released PRs/issues
+4. Submits to each store whose secrets are configured (`scripts/submit-stores.sh`):
+   - Chrome Web Store: `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`
+   - Firefox Add-ons: `FIREFOX_EXTENSION_ID`, `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
+
+PRs are squash-merged, so **PR titles must be Conventional Commits** (checked by the `PR title` workflow). Run `npx wxt submit init` to generate the store secrets, and the **Validate store credentials** workflow to check them.
 
 ### Testing
 1. Run `npm test` and `npm run compile`
@@ -161,6 +169,7 @@ CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull r
 ### Common Issues
 
 **Extension can't connect to Transmission**
+- If the popup shows **Allow access**, click it (or click **Save** in the options) to grant access to your server
 - Verify Transmission is running and RPC is enabled
 - Check the RPC URL in extension options
 - Ensure no firewall is blocking the connection
@@ -178,7 +187,7 @@ CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull r
 
 **Right-click menu not appearing**
 - Reload the extension
-- Check that you're right-clicking on actual torrent/magnet links
+- Check that you're right-clicking on actual torrent/magnet links (the menu item is **Send to Transmission**)
 - Verify the extension has contextMenus permission
 
 ## Contributing

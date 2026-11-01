@@ -10,7 +10,8 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # never cancel a release in progress on master
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -25,24 +26,70 @@ jobs:
       - run: npm run compile
       - run: npm test
       - run: npm run build
+      - run: npm run build:firefox
+      - run: npx --yes web-ext@10 lint --source-dir .output/firefox-mv3
 
-  # On merge to master, build the Chrome Web Store zip and attach it to the run.
-  zip:
-    if: github.event_name == 'push'
-    needs: check
+  e2e:
     runs-on: ubuntu-latest
+    services:
+      transmission:
+        image: lscr.io/linuxserver/transmission:latest
+        env:
+          USER: test
+          PASS: test
+        ports:
+          - 9091:9091
     steps:
       - uses: actions/checkout@v7
+        with:
+          # the upgrade test builds the last released version from history
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run zip
-      - id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/upload-artifact@v7
+      - run: npm run build
+      # The image has no /downloads. Create writable folders, a small torrent
+      # with real data, and a folder Transmission can't write to (failed moves).
+      - name: Prepare Transmission test data
+        run: docker exec ${{ job.services.transmission.id }} sh -c 'mkdir -p /downloads/complete /downloads/incomplete /downloads/locked && head -c 1048576 /dev/urandom > /downloads/complete/e2e-data.bin && transmission-create -o /tmp/e2e-data.torrent /downloads/complete/e2e-data.bin >/dev/null && chown -R abc:abc /downloads /tmp/e2e-data.torrent && chown root:root /downloads/locked'
+      - run: npm run test:e2e
+        env:
+          E2E_SCREENSHOTS: e2e-screenshots
+      - if: always()
+        uses: actions/upload-artifact@v7
         with:
-          name: torrent-to-transmission-${{ steps.version.outputs.version }}-chrome
-          path: .output/*-chrome.zip
-          if-no-files-found: error
+          name: e2e-screenshots
+          path: e2e-screenshots
+          if-no-files-found: ignore
+
+  # On merge to master: version from conventional commits, changelog, GitHub
+  # release with the store zips, and store submission (see .releaserc.json).
+  release:
+    if: github.event_name == 'push'
+    needs: [check, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CHROME_EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          CHROME_CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CHROME_CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          CHROME_REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          FIREFOX_EXTENSION_ID: ${{ secrets.FIREFOX_EXTENSION_ID }}
+          FIREFOX_JWT_ISSUER: ${{ secrets.FIREFOX_JWT_ISSUER }}
+          FIREFOX_JWT_SECRET: ${{ secrets.FIREFOX_JWT_SECRET }}

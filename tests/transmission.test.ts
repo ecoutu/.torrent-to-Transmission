@@ -5,6 +5,8 @@ import {
     arrayBufferToBase64,
     badgeText,
     diffTorrents,
+    originPattern,
+    samePath,
     rpcRequest,
     statusConstants,
     type Torrent
@@ -97,7 +99,7 @@ describe('diffTorrents', () => {
     const torrent = (overrides: Partial<Torrent>): Torrent => ({
         id: 1, name: 't', status: S.DOWNLOAD, sizeWhenDone: 100, leftUntilDone: 50, percentDone: 0.5,
         rateDownload: 0, rateUpload: 0, peersConnected: 0, peersGettingFromUs: 0, peersSendingToUs: 0,
-        recheckProgress: 0, queuePosition: 0, error: 0, errorString: '', eta: 10,
+        recheckProgress: 0, queuePosition: 0, error: 0, errorString: '', eta: 10, uploadRatio: 0, downloadDir: '/downloads',
         ...overrides
     });
 
@@ -132,5 +134,25 @@ describe('arrayBufferToBase64', () => {
         const encoded = arrayBufferToBase64(bytes.buffer);
         expect(encoded).not.toMatch(/\s/);
         expect(Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0))).toEqual(bytes);
+    });
+});
+
+describe('originPattern', () => {
+    it('builds a host match pattern without the port', () => {
+        expect(originPattern('http://192.168.1.5:9091/transmission/rpc')).toBe('http://192.168.1.5/*');
+        expect(originPattern('https://nas.local/transmission/rpc')).toBe('https://nas.local/*');
+    });
+
+    it('rejects invalid and non-http URLs', () => {
+        expect(originPattern('not a url')).toBeNull();
+        expect(originPattern('ftp://nas/rpc')).toBeNull();
+    });
+});
+
+describe('samePath', () => {
+    it('ignores trailing slashes', () => {
+        expect(samePath('/downloads/movies/', '/downloads/movies')).toBe(true);
+        expect(samePath('/', '')).toBe(true);
+        expect(samePath('/downloads/movies', '/downloads/tv')).toBe(false);
     });
 });
