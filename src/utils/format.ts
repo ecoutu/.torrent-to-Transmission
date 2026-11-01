@@ -8,36 +8,46 @@ export const DEFAULT_UNITS: Units = {
 };
 
 /*
-    size: value already divided by unitSize once (i.e. in units[0])
+    Format a value with the server's unit labels the way Transmission's web
+    interface does: no trailing zeros, at most `maxDecimals(unit)` decimals.
+
+    value: amount in units[0]
 */
-export function sizeToStr(size: number, units: string[], unitSize: number): string {
-    let sizeStr = size.toFixed(0);
-    let unitStr = '';
-
-    for (let i = 0; i < units.length; i++) {
-        if (size < unitSize || i === units.length - 1) {
-            unitStr = units[i] ?? '';
-            break;
+export function scaleToUnit(value: number, units: string[], unitSize: number, maxDecimals: (unit: string) => number): string {
+    let index = 0;
+    for (;;) {
+        const decimals = maxDecimals(units[index] ?? '');
+        // move up a unit when rounding would show e.g. "1000 kB"
+        const rounded = Number(value.toFixed(decimals));
+        if (rounded < unitSize || index >= units.length - 1) {
+            // the browser's UI language (also lets tests pin a locale)
+            const locale = globalThis.navigator?.language;
+            const formatted = new Intl.NumberFormat(locale, { maximumFractionDigits: decimals }).format(rounded);
+            return formatted + ' ' + (units[index] ?? '');
         }
-        size = size / unitSize;
-        sizeStr = size.toFixed(2);
+        value /= unitSize;
+        index += 1;
     }
-
-    return sizeStr + ' ' + unitStr;
 }
 
 // Transmission < 4 lists units from kB; 4.x starts the list at bytes.
-function formatUnits(bytes: number, list: string[], unitSize: number): string {
-    const startsAtBytes = /^B\b/.test(list[0] ?? '');
-    return sizeToStr(startsAtBytes ? bytes : bytes / unitSize, list, unitSize);
-}
+const startsAtBytes = (units: string[]) => /^B\b/.test(units[0] ?? '');
+
+// Sizes: whole numbers up to MB, up to two decimals from GB.
+const sizeDecimals = (unit: string) => (/^[GTPE]/.test(unit) ? 2 : 0);
 
 export function formatSize(bytes: number, units: Units = DEFAULT_UNITS): string {
-    return formatUnits(bytes, units['size-units'], units['size-bytes']);
+    const list = units['size-units'];
+    const unitSize = units['size-bytes'];
+    return scaleToUnit(startsAtBytes(list) ? bytes : bytes / unitSize, list, unitSize, sizeDecimals);
 }
 
+// Speeds: never below kB/s, up to two decimals.
 export function formatSpeed(bytesPerSec: number, units: Units = DEFAULT_UNITS): string {
-    return formatUnits(bytesPerSec, units['speed-units'], units['speed-bytes']);
+    const list = units['speed-units'];
+    const unitSize = units['speed-bytes'];
+    const fromKilo = startsAtBytes(list) ? list.slice(1) : list;
+    return scaleToUnit(bytesPerSec / unitSize, fromKilo, unitSize, () => 2);
 }
 
 export function formatEta(eta: number): string {
