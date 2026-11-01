@@ -18,8 +18,11 @@ export interface Settings {
     sendTorrentFile: boolean;
     clickMagnets: boolean;
     selected_list: ListName;
-    'enable-additional-paths': boolean;
+    // Extra download directories offered in the context menu and popup.
+    'additional-paths': DownloadLocation[];
 }
+
+export type DownloadLocation = [label: string, directory: string];
 
 export type ListName = 'all' | 'download' | 'seed' | 'pause';
 
@@ -34,7 +37,7 @@ export const DEFAULTS: Settings = {
     sendTorrentFile: false,
     clickMagnets: false,
     selected_list: 'all',
-    'enable-additional-paths': false
+    'additional-paths': []
 };
 
 // Host access is optional and requested at runtime. Every site is needed for
@@ -54,6 +57,18 @@ export function originPattern(url: string): string | null {
         return protocol + '//' + hostname + '/*';
     } catch {
         return null;
+    }
+}
+
+// Web interface address to use when none is configured.
+export function webInterfaceURL(webURL: string | undefined, rpcURL: string | undefined): string {
+    if (webURL) {
+        return webURL;
+    }
+    try {
+        return new URL(rpcURL || DEFAULTS.rpcURL).origin + '/transmission/web/';
+    } catch {
+        return DEFAULTS.webURL;
     }
 }
 
@@ -78,6 +93,8 @@ export interface Torrent {
     error: number;
     errorString: string;
     eta: number;
+    uploadRatio: number;
+    downloadDir: string;
 }
 
 export const TORRENT_FIELDS: (keyof Torrent)[] = [
@@ -96,7 +113,9 @@ export const TORRENT_FIELDS: (keyof Torrent)[] = [
     'queuePosition',
     'error',
     'errorString',
-    'eta'
+    'eta',
+    'uploadRatio',
+    'downloadDir'
 ];
 
 export interface Units {
@@ -137,7 +156,38 @@ export interface RpcPayload {
 export type BackgroundMessage =
     | { method: 'update' }
     | { method: 'rpc-call'; payload: RpcPayload }
-    | { method: 'add-torrent'; url: string };
+    | { method: 'add-torrent'; url: string; downloadDir?: string };
+
+// Response to an add-torrent message.
+export interface AddTorrentResult {
+    ok: boolean;
+    title: string;
+    message: string;
+    // Set when the torrent was already in Transmission.
+    existing?: { id: number; name: string; downloadDir: string };
+    // Where the torrent was asked to go (the chosen location, or the
+    // server's default download directory).
+    requestedDir?: string;
+}
+
+// Compare server paths, ignoring trailing slashes.
+export function samePath(a: string | undefined, b: string | undefined): boolean {
+    const normalize = (path: string | undefined) => (path ?? '').replace(/\/+$/, '') || '/';
+    return normalize(a) === normalize(b);
+}
+
+// Links that can be sent to Transmission: magnet links and http(s) URLs.
+export function isAddableUrl(url: string): boolean {
+    if (/^magnet:\?/i.test(url)) {
+        return true;
+    }
+    try {
+        const { protocol } = new URL(url);
+        return protocol === 'http:' || protocol === 'https:';
+    } catch {
+        return false;
+    }
+}
 
 export interface RpcResponse<T = any> {
     result: string;
@@ -258,17 +308,17 @@ export async function rpcRequest<T = any>(payload: RpcPayload, overrides: RpcOve
 export function describeStatus(status: number): string {
     switch (status) {
         case 0:
-            return 'no response';
+            return 'No response. Check that Transmission is running and remote access is enabled.';
         case 401:
-            return 'invalid username/password';
+            return 'Wrong username or password.';
         case 403:
-            return 'forbidden - check rpc-whitelist / rpc-host-whitelist in Transmission settings';
+            return 'Access denied. Add this computer to rpc-whitelist (or the hostname to rpc-host-whitelist) in Transmission\'s settings.';
         case 404:
-            return 'not found - check the RPC address';
+            return 'Not found. Check the RPC address.';
         case 409:
-            return 'session negotiation failed';
+            return 'Session negotiation failed.';
         default:
-            return 'unrecognized response (HTTP ' + status + ')';
+            return 'Unexpected response (HTTP ' + status + ').';
     }
 }
 
