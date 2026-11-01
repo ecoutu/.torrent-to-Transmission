@@ -1,6 +1,6 @@
 # Privacy Policy for .torrent to Transmission Chrome Extension
 
-**Effective Date:** August 7, 2025
+**Effective Date:** November 1, 2026
 **Last Updated:** August 7, 2025
 
 ## Overview
@@ -21,11 +21,12 @@ The Extension stores the following information locally on your device using Chro
   - Notification settings (enabled/disabled, duration)
   - Refresh rate for torrent status updates
   - Selected torrent filter view (all, downloading, seeding, paused)
-  - Additional download path configurations
-  - File transfer preferences (send torrent file vs. magnet link)
+  - Download locations (names and folder paths on your Transmission server)
+  - File transfer preferences (send torrent file vs. link)
+  - Whether clicking magnet links sends them to Transmission
 
 - **Temporary Session Data:**
-  - Transmission RPC session ID
+  - Transmission RPC session ID (kept in memory for the browser session only)
   - Current torrent list and status information
   - Last server response status
 
@@ -134,14 +135,14 @@ This Extension can be used worldwide. Please note:
 ## Technical Implementation
 
 ### Chrome Storage API
-- Uses Chrome's `chrome.storage.local` API for secure local storage
-- Data is encrypted and sandboxed by Chrome's security model
-- Storage is isolated from other extensions and websites
+- Uses Chrome's `chrome.storage.local` API, which is stored in your browser profile and isolated from websites and other extensions
+- Stored data, including your Transmission password, is not encrypted by the Extension; it is protected by your operating system account and browser profile
 
 ### Network Communications
-- Only communicates with Transmission servers you explicitly configure
-- Uses standard HTTP/HTTPS protocols as supported by Transmission
-- No external network requests are made by the Extension
+- Communicates with the Transmission server you configure, over HTTP or HTTPS
+- If you turn on **Download .torrent files in the browser**, the Extension downloads a .torrent file from the site you send it from (with your browser's cookies for that site, so logins work) and passes it to your Transmission server
+- If you turn on **Send magnet links when clicked**, a small script runs on web pages and only reacts to clicks on `magnet:` links; it does not read or send page content
+- No other network requests are made; there is no analytics, telemetry or developer server
 
 ## Contact Information
 
