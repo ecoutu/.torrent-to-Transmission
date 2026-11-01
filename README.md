@@ -137,17 +137,20 @@ If access is missing, the popup shows an **Allow access** button. Existing users
 | `npm test` | Run unit tests |
 | `npm run test:e2e` | Run end-to-end tests in Chrome against a Transmission server (see `tests/e2e/run.mjs`) |
 
-CI (`.github/workflows/ci.yml`) runs type-check, unit tests, both browser builds, a `web-ext` lint of the Firefox build and the end-to-end suite (against a Transmission service container) on every pull request. On merge to `master` it also builds the store zips and attaches them to the workflow run.
+CI (`.github/workflows/ci.yml`) runs type-check, unit tests, both browser builds, a `web-ext` lint of the Firefox build and the end-to-end suite (against a Transmission service container) on every pull request. On merge to `master` it then runs the release (below).
 
 ### Releasing
 
-1. Bump `version` in `package.json` and merge to `master`.
-2. Push a matching tag: `git tag v1.2.0 && git push origin v1.2.0`.
-3. `.github/workflows/release.yml` creates a GitHub release with the zips and submits them to each store whose secrets are configured:
+Releases are automated with [semantic-release](https://semantic-release.gitbook.io/). Every merge to `master` that passes CI:
+
+1. Determines the next version from [Conventional Commits](https://www.conventionalcommits.org/) since the last tag (`fix:` → patch, `feat:` → minor, `feat!:` / `BREAKING CHANGE:` → major; `ci:`, `docs:`, `chore:` etc. don't release)
+2. Updates `package.json` and `CHANGELOG.md` and commits them as `chore(release): x.y.z`
+3. Builds the Chrome and Firefox zips, creates a GitHub release with them, and comments on the released PRs/issues
+4. Submits to each store whose secrets are configured (`scripts/submit-stores.sh`):
    - Chrome Web Store: `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`
    - Firefox Add-ons: `FIREFOX_EXTENSION_ID`, `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
 
-   Run `npx wxt submit init` locally to generate these values, then validate them by running the Release workflow manually with **dry run** checked.
+PRs are squash-merged, so **PR titles must be Conventional Commits** (checked by the `PR title` workflow). Run `npx wxt submit init` to generate the store secrets, and the **Validate store credentials** workflow to check them.
 
 ### Testing
 1. Run `npm test` and `npm run compile`

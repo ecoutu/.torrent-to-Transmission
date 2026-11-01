@@ -2,7 +2,7 @@
   "name": "torrent-to-transmission",
   "description": "Automagically add, access and control torrents with Chrome and Firefox.",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -17,7 +17,12 @@
     "test:e2e": "node tests/e2e/run.mjs"
   },
   "devDependencies": {
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "conventional-changelog-conventionalcommits": "^9.3.1",
     "puppeteer-core": "^24.43.1",
+    "semantic-release": "^25.0.9",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
     "wxt": "^0.21.5"
