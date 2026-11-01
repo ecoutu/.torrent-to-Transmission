@@ -91,7 +91,8 @@ The Extension requests the following permissions:
 - **notifications:** To show desktop notifications when torrents complete
 - **storage:** To save your preferences and temporary session data locally
 - **alarms:** To periodically update torrent status information
-- **host_permissions:** To communicate with your Transmission server
+- **scripting:** To register the optional magnet link click handler
+- **optional host permissions:** Requested at runtime: your Transmission server's host when you save settings, and all sites only if you enable "Send .torrent file" or "Send magnet links when clicked"
 
 These permissions are used solely for the Extension's functionality and not for data collection.
 

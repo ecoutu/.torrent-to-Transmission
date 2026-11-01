@@ -1,6 +1,15 @@
 import './style.css';
 import { browser } from 'wxt/browser';
-import { DEFAULTS, describeStatus, rpcRequest, type SessionInfo, type Settings } from '@/utils/transmission';
+import {
+    ALL_SITES,
+    DEFAULTS,
+    describeStatus,
+    hasOrigins,
+    originPattern,
+    rpcRequest,
+    type SessionInfo,
+    type Settings
+} from '@/utils/transmission';
 
 const byId = <T extends HTMLElement = HTMLInputElement>(id: string) => document.getElementById(id) as T;
 const saveButton = document.querySelector<HTMLInputElement>('input[type="submit"]')!;
@@ -41,7 +50,7 @@ type OptionsStorage = Partial<Settings> & { 'additional-paths'?: [string, string
 async function init() {
     const items = await browser.storage.local.get([
         'rpcURL', 'webURL', 'rpcUser', 'rpcPass', 'displayNotification',
-        'notificationDuration', 'refreshRate', 'sendTorrentFile',
+        'notificationDuration', 'refreshRate', 'sendTorrentFile', 'clickMagnets',
         'enable-additional-paths', 'additional-paths'
     ]) as OptionsStorage;
 
@@ -53,6 +62,7 @@ async function init() {
     byId('notification-duration').value = String(items.notificationDuration ?? DEFAULTS.notificationDuration);
     byId('refresh-rate').value = String(items.refreshRate ?? DEFAULTS.refreshRate);
     byId('send-torrent-file').checked = !!items.sendTorrentFile;
+    byId('click-magnets').checked = !!items.clickMagnets;
     byId('enable-additional-paths').checked = !!items['enable-additional-paths'];
 
     savedPathRows().forEach((row) => row.remove());
@@ -79,8 +89,22 @@ async function rpcTest() {
     urlResult.className = 'result';
     userResult.textContent = '';
 
+    const url = byId('rpc-url').value;
+    const pattern = originPattern(url);
+    if (!pattern) {
+        urlResult.textContent = 'Error: enter an http:// or https:// address';
+        urlResult.className = 'result error';
+        return;
+    }
+    if (!await hasOrigins([pattern])) {
+        if (seq === rpcTestSeq) {
+            urlResult.textContent = 'Click Save to allow access to ' + new URL(url).hostname;
+        }
+        return;
+    }
+
     const { status, data } = await rpcRequest<SessionInfo['arguments']>({ method: 'session-get' }, {
-        url: byId('rpc-url').value,
+        url,
         user: byId('rpc-user').value,
         pass: byId('rpc-pass').value
     });
@@ -109,7 +133,7 @@ function readNumber(id: string, fallback: number, min: number): number {
     return Number.isFinite(value) && value >= min ? value : fallback;
 }
 
-async function save(event: Event) {
+function save(event: Event) {
     event.preventDefault();
 
     const toSet: OptionsStorage = {
@@ -121,6 +145,7 @@ async function save(event: Event) {
         notificationDuration: readNumber('notification-duration', DEFAULTS.notificationDuration, 0),
         refreshRate: readNumber('refresh-rate', DEFAULTS.refreshRate, 1),
         sendTorrentFile: byId('send-torrent-file').checked,
+        clickMagnets: byId('click-magnets').checked,
         'enable-additional-paths': byId('enable-additional-paths').checked,
         'additional-paths': savedPathRows().map((row): [string, string] => [
             rowInput(row, 'path-label').value,
@@ -131,12 +156,61 @@ async function save(event: Event) {
     byId('notification-duration').value = String(toSet.notificationDuration);
     byId('refresh-rate').value = String(toSet.refreshRate);
 
-    await browser.storage.local.set(toSet);
-    markClean();
+    // permissions.request must start synchronously inside the click handler
+    const origins = requiredOrigins(toSet);
+    const missing = origins.filter((origin) => !isCovered(origin));
+    const granted = missing.length
+        ? browser.permissions.request({ origins: missing }).catch(() => false)
+        : Promise.resolve(true);
+
+    granted.then(async (ok) => {
+        await browser.storage.local.set(toSet);
+        markClean();
+        const status = byId<HTMLElement>('save-status');
+        if (ok) {
+            status.textContent = 'Saved.';
+            status.className = 'result';
+        } else {
+            status.textContent = 'Saved, but access was not granted - the extension can\'t reach ' +
+                'your Transmission server' + (origins.length > 1 ? ' or download .torrent files / handle magnet clicks' : '') +
+                ' until you click Save and allow it.';
+            status.className = 'result error';
+        }
+        rpcTest();
+    });
+}
+
+// Snapshot of granted host permissions, so Save can decide synchronously
+// (within the click's user gesture) whether a permission prompt is needed.
+let grantedOrigins: string[] = [];
+
+async function refreshGrantedOrigins() {
+    grantedOrigins = (await browser.permissions.getAll()).origins ?? [];
+}
+
+function isCovered(origin: string): boolean {
+    const scheme = origin.split('://')[0];
+    return grantedOrigins.includes(origin) ||
+        grantedOrigins.includes(scheme + '://*/*') ||
+        grantedOrigins.includes('<all_urls>');
+}
+
+// Host permissions needed for the given settings.
+function requiredOrigins(settings: OptionsStorage): string[] {
+    const origins: string[] = [];
+    const server = originPattern(settings.rpcURL || '');
+    if (server) {
+        origins.push(server);
+    }
+    if (settings.sendTorrentFile || settings.clickMagnets) {
+        origins.push(...ALL_SITES);
+    }
+    return origins;
 }
 
 function markDirty() {
     saveButton.disabled = false;
+    byId<HTMLElement>('save-status').textContent = '';
 }
 
 function markClean() {
@@ -208,4 +282,8 @@ pathsTable.addEventListener('click', (event) => {
     }
 });
 
+browser.permissions.onAdded.addListener(refreshGrantedOrigins);
+browser.permissions.onRemoved.addListener(refreshGrantedOrigins);
+
+refreshGrantedOrigins();
 init();

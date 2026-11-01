@@ -25,8 +25,10 @@ jobs:
       - run: npm run compile
       - run: npm test
       - run: npm run build
+      - run: npm run build:firefox
+      - run: npx --yes web-ext@10 lint --source-dir .output/firefox-mv3
 
-  # On merge to master, build the Chrome Web Store zip and attach it to the run.
+  # On merge to master, build the Chrome Web Store and AMO zips and attach them to the run.
   zip:
     if: github.event_name == 'push'
     needs: check
@@ -39,10 +41,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run zip
+      - run: npm run zip:firefox
       - id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v7
         with:
-          name: torrent-to-transmission-${{ steps.version.outputs.version }}-chrome
-          path: .output/*-chrome.zip
+          name: torrent-to-transmission-${{ steps.version.outputs.version }}
+          path: |
+            .output/*-chrome.zip
+            .output/*-firefox.zip
+            .output/*-sources.zip
           if-no-files-found: error

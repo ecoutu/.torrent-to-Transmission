@@ -12,6 +12,27 @@ function rpcBody(init: RequestInit | undefined) {
     return JSON.parse(String(init?.body));
 }
 
+const scripting = {
+    registered: [] as string[],
+    allSites: false
+};
+
+function stubPermissionsAndScripting() {
+    scripting.registered = [];
+    scripting.allSites = false;
+    vi.spyOn(fakeBrowser.permissions.onAdded, 'addListener').mockImplementation(() => {});
+    vi.spyOn(fakeBrowser.permissions.onRemoved, 'addListener').mockImplementation(() => {});
+    vi.spyOn(fakeBrowser.permissions, 'contains').mockImplementation(async () => scripting.allSites);
+    vi.spyOn(fakeBrowser.scripting, 'getRegisteredContentScripts').mockImplementation(
+        async () => scripting.registered.map((id) => ({ id })) as never);
+    vi.spyOn(fakeBrowser.scripting, 'registerContentScripts').mockImplementation(async (scripts) => {
+        scripting.registered.push(...scripts.map((s) => s.id));
+    });
+    vi.spyOn(fakeBrowser.scripting, 'unregisterContentScripts').mockImplementation(async () => {
+        scripting.registered = [];
+    });
+}
+
 describe('context menu: add torrent', () => {
     const fetchMock = vi.fn<typeof fetch>();
     const notifications: { title: string; message: string }[] = [];
@@ -53,10 +74,11 @@ describe('context menu: add torrent', () => {
             notificationDuration: 0,
             sendTorrentFile: false
         });
-        // contextMenus isn't implemented by fake-browser
+        // contextMenus, permissions and scripting aren't implemented by fake-browser
         vi.spyOn(fakeBrowser.contextMenus.onClicked, 'addListener').mockImplementation((listener) => {
             onMenuClick = listener as ClickListener;
         });
+        stubPermissionsAndScripting();
         background.main();
     });
 
@@ -89,5 +111,34 @@ describe('context menu: add torrent', () => {
         expect(download![1]).toMatchObject({ credentials: 'include' });
         const add = fetchMock.mock.calls.filter(([, init]) => init?.body && rpcBody(init).method === 'torrent-add').at(-1)!;
         expect(rpcBody(add[1]).arguments).toEqual({ paused: false, metainfo: btoa('d8:') });
+    });
+});
+
+describe('magnet click content script', () => {
+    beforeEach(() => {
+        fakeBrowser.reset();
+        vi.stubGlobal('fetch', vi.fn(async () => Response.json({ result: 'error' })));
+        stubPermissionsAndScripting();
+        vi.spyOn(fakeBrowser.contextMenus.onClicked, 'addListener').mockImplementation(() => {});
+        background.main();
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+    });
+
+    it('registers only when enabled and all-sites access is granted', async () => {
+        await fakeBrowser.storage.local.set({ clickMagnets: true });
+        await vi.waitFor(() => expect(fakeBrowser.permissions.contains).toHaveBeenCalled());
+        expect(scripting.registered).toEqual([]);
+
+        scripting.allSites = true;
+        await fakeBrowser.storage.local.set({ clickMagnets: false });
+        await fakeBrowser.storage.local.set({ clickMagnets: true });
+        await vi.waitFor(() => expect(scripting.registered).toEqual(['magnet-click']));
+
+        await fakeBrowser.storage.local.set({ clickMagnets: false });
+        await vi.waitFor(() => expect(scripting.registered).toEqual([]));
     });
 });
