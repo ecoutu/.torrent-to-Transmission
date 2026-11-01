@@ -16,6 +16,7 @@ export interface Settings {
     notificationDuration: number;
     refreshRate: number;
     sendTorrentFile: boolean;
+    clickMagnets: boolean;
     selected_list: ListName;
     'enable-additional-paths': boolean;
 }
@@ -31,9 +32,34 @@ export const DEFAULTS: Settings = {
     notificationDuration: 10,
     refreshRate: 5,
     sendTorrentFile: false,
+    clickMagnets: false,
     selected_list: 'all',
     'enable-additional-paths': false
 };
+
+// Host access is optional and requested at runtime. Every site is needed for
+// downloading .torrent files and for handling magnet link clicks.
+export const ALL_SITES = ['http://*/*', 'https://*/*'];
+
+/*
+    Match pattern granting access to the host of an http(s) URL, or null if
+    the URL is invalid. Match patterns ignore the port.
+*/
+export function originPattern(url: string): string | null {
+    try {
+        const { protocol, hostname } = new URL(url);
+        if (protocol !== 'http:' && protocol !== 'https:') {
+            return null;
+        }
+        return protocol + '//' + hostname + '/*';
+    } catch {
+        return null;
+    }
+}
+
+export function hasOrigins(origins: string[]): Promise<boolean> {
+    return browser.permissions.contains({ origins });
+}
 
 export interface Torrent {
     id: number;
@@ -110,7 +136,8 @@ export interface RpcPayload {
 // Messages handled by the background service worker.
 export type BackgroundMessage =
     | { method: 'update' }
-    | { method: 'rpc-call'; payload: RpcPayload };
+    | { method: 'rpc-call'; payload: RpcPayload }
+    | { method: 'add-torrent'; url: string };
 
 export interface RpcResponse<T = any> {
     result: string;

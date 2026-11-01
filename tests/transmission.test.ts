@@ -5,6 +5,7 @@ import {
     arrayBufferToBase64,
     badgeText,
     diffTorrents,
+    originPattern,
     rpcRequest,
     statusConstants,
     type Torrent
@@ -132,5 +133,17 @@ describe('arrayBufferToBase64', () => {
         const encoded = arrayBufferToBase64(bytes.buffer);
         expect(encoded).not.toMatch(/\s/);
         expect(Uint8Array.from(atob(encoded), (c) => c.charCodeAt(0))).toEqual(bytes);
+    });
+});
+
+describe('originPattern', () => {
+    it('builds a host match pattern without the port', () => {
+        expect(originPattern('http://192.168.1.5:9091/transmission/rpc')).toBe('http://192.168.1.5/*');
+        expect(originPattern('https://nas.local/transmission/rpc')).toBe('https://nas.local/*');
+    });
+
+    it('rejects invalid and non-http URLs', () => {
+        expect(originPattern('not a url')).toBeNull();
+        expect(originPattern('ftp://nas/rpc')).toBeNull();
     });
 });

@@ -22,6 +22,8 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 5. Click "Load unpacked" and select the `.output/chrome-mv3` directory
 6. The extension will appear in your browser toolbar
 
+For Firefox, run `npm run build:firefox`, open `about:debugging#/runtime/this-firefox`, click "Load Temporary Add-on…" and select `.output/firefox-mv3/manifest.json`.
+
 ### Configuration
 1. Click the extension icon in your toolbar
 2. Click the "Options" link to configure:
@@ -37,6 +39,7 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 ### Adding Torrents
 - **Method 1**: Right-click on any torrent link and select ".torrent To Transmission"
 - **Method 2**: Right-click on magnet links and select ".torrent To Transmission"
+- **Method 3**: Enable **Send magnet links when clicked** in the options, then just click magnet links (hold Ctrl/Shift/Alt/Cmd to skip)
 
 ### Managing Torrents
 - Click the extension icon to view the popup interface
@@ -52,7 +55,7 @@ A Chrome extension that allows you to automatically add torrent files and magnet
 
 ## Requirements
 
-- Chrome 120 or newer
+- Chrome 120 or newer, or Firefox 140 or newer
 - Transmission BitTorrent client with RPC enabled
 - Network access to your Transmission instance
 
@@ -81,31 +84,21 @@ This extension requires the following permissions:
 - **notifications**: To show desktop notifications
 - **storage**: To save your settings and torrent data
 - **alarms**: To periodically update torrent status
-- **host_permissions**: To communicate with your Transmission server
+- **scripting**: To enable the optional magnet link click handler
 
-### Why Host Permissions Are Required
+### Host access is opt-in
 
-The extension requests access to `http://*/*` and `https://*/*` for these specific reasons:
+Website access is requested at runtime (`optional_host_permissions`), not at install:
 
-1. **Transmission Server Communication**: The extension needs to connect to your Transmission RPC endpoint, which could be running on any domain or IP address (localhost, local network IP, remote server, etc.)
+1. **Your Transmission server only**: when you click **Save** in the options, the browser asks for access to the host in your RPC address (e.g. `192.168.1.100`). This is all the extension needs by default.
+2. **All sites**: only requested if you enable **Send .torrent file** (to download the .torrent from the site you're browsing, with your login cookies) or **Send magnet links when clicked** (to detect clicks on magnet links).
 
-2. **Flexible Server Configuration**: Users may run Transmission on:
-   - Local servers (`http://localhost:9091`, `http://192.168.1.100:9091`)
-   - Remote servers (`https://myserver.com:9091`)
-   - Custom domains or ports
-
-3. **Torrent File Downloads**: When you choose to send actual torrent files (instead of magnet links), the extension needs to download the .torrent file from the website you're browsing
+If access is missing, the popup shows an **Allow access** button. Existing users updating from 1.1.x keep the access they already granted.
 
 **Important Security Notes:**
-- The extension ONLY communicates with URLs you explicitly configure in the options
+- The extension ONLY communicates with URLs you explicitly configure in the options, plus .torrent links you choose to send
 - No data is sent to any third-party servers
-- All communication is limited to your Transmission server and torrent file downloads
 - You can review the source code to verify these claims
-
-If you're security-conscious, you can:
-- Run Transmission on localhost only
-- Use HTTPS for your Transmission server
-- Review the network requests in Chrome DevTools
 
 ## Technical Details
 
@@ -137,13 +130,13 @@ If you're security-conscious, you can:
 
 | Command | Description |
 |---|---|
-| `npm run dev` | Launch Chrome with the extension loaded and hot reload |
-| `npm run build` | Production build in `.output/chrome-mv3` |
-| `npm run zip` | Build a zip for the Chrome Web Store |
+| `npm run dev` / `dev:firefox` | Launch Chrome / Firefox with the extension loaded and hot reload |
+| `npm run build` / `build:firefox` | Production build in `.output/chrome-mv3` / `.output/firefox-mv3` |
+| `npm run zip` / `zip:firefox` | Build a zip for the Chrome Web Store / addons.mozilla.org (plus a sources zip) |
 | `npm run compile` | Type-check with `tsc` |
 | `npm test` | Run unit tests |
 
-CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull request. On merge to `master` it also builds the Chrome Web Store zip and attaches it to the workflow run as an artifact.
+CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull request. It also lints the Firefox build with `web-ext`. On merge to `master` it builds the Chrome Web Store and AMO zips and attaches them to the workflow run as an artifact.
 
 ### Testing
 1. Run `npm test` and `npm run compile`
@@ -161,6 +154,7 @@ CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull r
 ### Common Issues
 
 **Extension can't connect to Transmission**
+- If the popup shows **Allow access**, click it (or click **Save** in the options) to grant access to your server
 - Verify Transmission is running and RPC is enabled
 - Check the RPC URL in extension options
 - Ensure no firewall is blocking the connection

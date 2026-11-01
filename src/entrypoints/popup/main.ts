@@ -2,6 +2,8 @@ import './style.css';
 import { browser } from 'wxt/browser';
 import {
     DEFAULTS,
+    hasOrigins,
+    originPattern,
     describeStatus,
     type BackgroundMessage,
     statusConstants,
@@ -176,15 +178,24 @@ function selectList(list: ListName) {
     }
 }
 
-function showConnection(lastStatus: number | undefined, rpcURL: string | undefined) {
+async function showConnection(lastStatus: number | undefined, rpcURL: string | undefined) {
     const ok = lastStatus === 200;
     $('.transmission-error').hidden = ok;
     $('.main').hidden = !ok;
-    if (!ok) {
-        $('.transmission-error .rpc-url').textContent = rpcURL || DEFAULTS.rpcURL;
-        $('.transmission-error .error-reason').textContent =
-            lastStatus === undefined ? 'connecting…' : describeStatus(lastStatus);
-    }
+    if (ok) return;
+
+    const url = rpcURL || DEFAULTS.rpcURL;
+    const pattern = originPattern(url);
+    const permitted = !pattern || await hasOrigins([pattern]);
+    $('.transmission-error .rpc-url').textContent = url;
+    $('.transmission-error .error-reason').textContent =
+        !permitted ? 'access not granted' :
+        lastStatus === undefined ? 'connecting…' : describeStatus(lastStatus);
+
+    const grant = $<HTMLButtonElement>('.grant-access');
+    grant.hidden = permitted;
+    grant.dataset.origin = pattern || '';
+    $('.grant-host').textContent = pattern ? new URL(url).hostname : '';
 }
 
 function sendMessage(msg: BackgroundMessage) {
@@ -211,7 +222,7 @@ async function render() {
     applySession(items['session-info'], items.rpc_version);
     selectList(items.selected_list || 'all');
     $<HTMLAnchorElement>('.webui').href = items.webURL || DEFAULTS.webURL;
-    showConnection(items.lastStatus, items.rpcURL);
+    await showConnection(items.lastStatus, items.rpcURL);
     buildList(items.torrents);
     updateSpeed(items['session-stats']);
 }
@@ -258,6 +269,12 @@ function bindEvents() {
             method: 'session-set',
             arguments: { 'alt-speed-enabled': !state.altSpeedEnabled }
         });
+    });
+
+    $('.grant-access').addEventListener('click', (event) => {
+        const origin = (event.currentTarget as HTMLElement).dataset.origin;
+        // the background refreshes when the permission is added
+        if (origin) browser.permissions.request({ origins: [origin] });
     });
 
     $('.open-options').addEventListener('click', (event) => {

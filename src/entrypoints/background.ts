@@ -1,12 +1,14 @@
 import { browser, type Browser } from 'wxt/browser';
 import { defineBackground } from 'wxt/utils/define-background';
 import {
+    ALL_SITES,
     DEFAULTS,
     TORRENT_FIELDS,
     arrayBufferToBase64,
     badgeText,
     describeStatus,
     diffTorrents,
+    hasOrigins,
     rpcRequest,
     statusConstants,
     type BackgroundMessage,
@@ -23,6 +25,7 @@ const ALARM_NAME = 'update';
 // polls at the configured refresh rate while it is open.
 const MIN_ALARM_MINUTES = 0.5;
 const ACTION_REFRESH_DELAY_MS = 1000;
+const MAGNET_SCRIPT_ID = 'magnet-click';
 
 export default defineBackground(() => {
     /*
@@ -46,12 +49,23 @@ export default defineBackground(() => {
         });
 
         await scheduleAlarm();
+        await syncMagnetScript();
         update();
     });
 
     browser.runtime.onStartup.addListener(async () => {
         await scheduleAlarm();
+        await syncMagnetScript();
         update();
+    });
+
+    // Host access is granted from the options page or popup.
+    browser.permissions.onAdded.addListener(() => {
+        syncMagnetScript();
+        update();
+    });
+    browser.permissions.onRemoved.addListener(() => {
+        syncMagnetScript();
     });
 
     browser.alarms.onAlarm.addListener((alarm) => {
@@ -66,6 +80,9 @@ export default defineBackground(() => {
         }
         if (changes.refreshRate) {
             scheduleAlarm(changes.refreshRate.newValue as number);
+        }
+        if (changes.clickMagnets) {
+            syncMagnetScript();
         }
         if (changes.rpcURL || changes.rpcUser || changes.rpcPass) {
             browser.storage.session.remove('sessionId');
@@ -94,6 +111,9 @@ export default defineBackground(() => {
             });
             return true;
         }
+        if (msg.method === 'add-torrent' && /^magnet:/i.test(msg.url)) {
+            addTorrent(msg.url);
+        }
         return false;
     });
 
@@ -115,6 +135,30 @@ async function scheduleAlarm(refreshRate?: number) {
 }
 
 /*
+    Register the magnet click handler only while the option is on and access
+    to all sites has been granted.
+*/
+async function syncMagnetScript() {
+    const { clickMagnets } = await browser.storage.local.get('clickMagnets') as Partial<Settings>;
+    const wanted = !!clickMagnets && await hasOrigins(ALL_SITES);
+    const registered = (await browser.scripting.getRegisteredContentScripts({ ids: [MAGNET_SCRIPT_ID] })).length > 0;
+
+    if (wanted && !registered) {
+        await browser.scripting.registerContentScripts([{
+            id: MAGNET_SCRIPT_ID,
+            js: ['content-scripts/magnet.js'],
+            matches: ALL_SITES,
+            runAt: 'document_start',
+            allFrames: true,
+            // re-registered from onStartup
+            persistAcrossSessions: false
+        }]);
+    } else if (!wanted && registered) {
+        await browser.scripting.unregisterContentScripts({ ids: [MAGNET_SCRIPT_ID] });
+    }
+}
+
+/*
     Show Chrome desktop notification.
 */
 async function showNotification(title: string, text: string) {
@@ -129,8 +173,8 @@ async function showNotification(title: string, text: string) {
         iconUrl: browser.runtime.getURL('/img/icon-large.png'),
         title: title,
         message: text || '',
-        // 0 means "don't dismiss automatically"
-        requireInteraction: timeout === 0
+        // 0 means "don't dismiss automatically" (not supported by Firefox)
+        ...(import.meta.env.FIREFOX ? {} : { requireInteraction: timeout === 0 })
     });
 
     if (timeout > 0) {
