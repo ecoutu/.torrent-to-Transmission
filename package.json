@@ -1,0 +1,20 @@
+{
+  "name": "torrent-to-transmission",
+  "description": "Automagically add, access and control torrents with Chrome.",
+  "private": true,
+  "version": "1.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "compile": "tsc --noEmit",
+    "test": "vitest run",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12",
+    "wxt": "^0.21.5"
+  }
+}

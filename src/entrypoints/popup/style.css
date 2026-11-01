@@ -158,22 +158,22 @@ div.queue-up {
 }
 
 div.queue-up {
-    background: url("../img/torrent_buttons.png") no-repeat -56px 0px;
+    background: url("/img/torrent_buttons.png") no-repeat -56px 0px;
 }
 div.queue-up:hover {
-    background: url("../img/torrent_buttons.png") no-repeat -56px -14px;
+    background: url("/img/torrent_buttons.png") no-repeat -56px -14px;
 }
 div.queue-up:active {
-    background: url("../img/torrent_buttons.png") no-repeat -56px -28px;
+    background: url("/img/torrent_buttons.png") no-repeat -56px -28px;
 }
 div.queue-down {
-    background: url("../img/torrent_buttons.png") no-repeat -70px 0px;
+    background: url("/img/torrent_buttons.png") no-repeat -70px 0px;
 }
 div.queue-down:hover {
-    background: url("../img/torrent_buttons.png") no-repeat -70px -14px;
+    background: url("/img/torrent_buttons.png") no-repeat -70px -14px;
 }
 div.queue-down:active {
-    background: url("../img/torrent_buttons.png") no-repeat -70px -28px;
+    background: url("/img/torrent_buttons.png") no-repeat -70px -28px;
 }
 
 div.remove.torrent {
@@ -181,31 +181,31 @@ div.remove.torrent {
 }
 
 div.pause.torrent {
-    background: url("../img/torrent_buttons.png") no-repeat 0px 0px;
+    background: url("/img/torrent_buttons.png") no-repeat 0px 0px;
 }
 div.pause.torrent:hover {
-    background: url("../img/torrent_buttons.png") no-repeat 0px -14px;
+    background: url("/img/torrent_buttons.png") no-repeat 0px -14px;
 }
 div.pause.torrent:active {
-    background: url("../img/torrent_buttons.png") no-repeat 0px -28px;
+    background: url("/img/torrent_buttons.png") no-repeat 0px -28px;
 }
 div.resume.torrent {
-    background: url("../img/torrent_buttons.png") no-repeat -14px 0px;
+    background: url("/img/torrent_buttons.png") no-repeat -14px 0px;
 }
 div.resume.torrent:hover {
-    background: url("../img/torrent_buttons.png") no-repeat -14px -14px;
+    background: url("/img/torrent_buttons.png") no-repeat -14px -14px;
 }
 div.resume.torrent:active {
-    background: url("../img/torrent_buttons.png") no-repeat -14px -28px;
+    background: url("/img/torrent_buttons.png") no-repeat -14px -28px;
 }
 div.remove.torrent {
-    background: url("../img/torrent_buttons.png") no-repeat -42px 0px;
+    background: url("/img/torrent_buttons.png") no-repeat -42px 0px;
 }
 div.remove.torrent:hover {
-    background: url("../img/torrent_buttons.png") no-repeat -42px -14px;
+    background: url("/img/torrent_buttons.png") no-repeat -42px -14px;
 }
 div.remove.torrent:active {
-    background: url("../img/torrent_buttons.png") no-repeat -42px -28px;
+    background: url("/img/torrent_buttons.png") no-repeat -42px -28px;
 }
 
 div.button.wrapper {
@@ -234,35 +234,35 @@ div.link-wrapper {
 }
 
 div.pause.all div {
-    background: url("../img/toolbar_buttons.png") no-repeat 0px -128px;
+    background: url("/img/toolbar_buttons.png") no-repeat 0px -128px;
 }
 
 div.resume.all div {
-    background: url("../img/toolbar_buttons.png") no-repeat 0px -160px;
+    background: url("/img/toolbar_buttons.png") no-repeat 0px -160px;
 }
 
 div.webui div {
-    background: url("../img/icon-32.png") no-repeat;
+    background: url("/img/icon-32.png") no-repeat;
 }
 
 div.transmission-error {
     color: red;
-    white-space: nowrap;
     margin: 2em;
 }
 
 img.turtle {
+    cursor: pointer;
     width: 20px;
     height: 14px;
     border: 1px solid lightgray;
 }
 
 img.turtle.off {
-    background: url("../img/turtle-grey.png") no-repeat 50% 50%;
+    background: url("/img/turtle-grey.png") no-repeat 50% 50%;
 }
 
 img.turtle.on {
-    background: url("../img/turtle-blue.png") no-repeat 50% 50%;
+    background: url("/img/turtle-blue.png") no-repeat 50% 50%;
 }
 
 img.turtle:hover {
