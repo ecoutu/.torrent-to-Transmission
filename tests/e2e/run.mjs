@@ -240,7 +240,57 @@ async function popupFlows(browser, id, options) {
         ((await popup.$eval('[data-testid="add-result"]', (e) => e.textContent).catch(() => '')) || '').includes('Torrent added'));
     check('popup add uses the chosen location', added?.downloadDir === '/downloads/movies', added?.downloadDir);
     await screenshot(popup, 'popup-add');
+
+    // sending it again to the default location: say where it is, offer to move it
+    const defaultDir = (await rpc('session-get', { fields: ['download-dir'] })).arguments['download-dir'];
+    const dirOf = async (name) => (await rpc('torrent-get', { fields: ['name', 'downloadDir'] })).arguments.torrents.find((t) => t.name === name)?.downloadDir;
+    await popup.click('[data-testid="add-url"]', { count: 3 });
+    await popup.type('[data-testid="add-url"]', ADD_MAGNET);
+    await popup.select('[data-testid="add-location"]', '');
+    await popup.click('[data-testid="add-submit"]');
+    await popup.waitForSelector('[data-testid="move-existing"]', { timeout: 6000 }).catch(() => {});
+    const dupText = await popup.$eval('[data-testid="add-result"]', (e) => e.textContent).catch(() => '');
+    check('duplicate says where it is saved', dupText.includes('Already in Transmission') && dupText.includes('/downloads/movies'), dupText.trim());
+    check('duplicate offers to move it', !!(await popup.$('[data-testid="move-existing"]')));
+    await screenshot(popup, 'popup-duplicate');
+    await popup.click('[data-testid="move-existing"]');
+    await sleep(2000);
+    check('move button moves the torrent', (await dirOf('popup-added')) === defaultDir, await dirOf('popup-added'));
     await popup.click('[data-testid="toggle-add"]');
+
+    // "Move to" from the row menu
+    const rowOf = (name) => popup.evaluateHandle((n) =>
+        [...document.querySelectorAll('[data-testid="torrent"]')].find((e) => e.querySelector('.name').textContent === n), name);
+    await popup.waitForFunction(() => [...document.querySelectorAll('[data-testid="torrent"] .name')].some((e) => e.textContent === 'popup-added'), { timeout: 6000 }).catch(() => {});
+    await (await (await rowOf('popup-added')).$('[data-testid="more"]')).click();
+    await popup.waitForSelector('[data-testid="move-to"]', { visible: true, timeout: 3000 }).catch(() => {});
+    const targets = await popup.$$eval('[data-testid="move-to"]', (els) => els.map((e) => e.textContent.trim()));
+    check('row menu lists other locations', JSON.stringify(targets) === '["Movies"]', JSON.stringify(targets));
+    await screenshot(popup, 'popup-move-menu');
+    await popup.click('[data-testid="move-to"]');
+    await sleep(2000);
+    check('row menu moves the torrent', (await dirOf('popup-added')) === '/downloads/movies', await dirOf('popup-added'));
+
+    // in a popup sized to its content the menu must flip up or grow the page, never be cut off
+    await popup.setViewport({ width: 420, height: 220 });
+    await (await (await rowOf('popup-added')).$('[data-testid="more"]')).click();
+    await sleep(200);
+    const fit = await popup.evaluate(() => {
+        const r = document.querySelector('[role="menu"]').getBoundingClientRect();
+        const height = Math.max(window.innerHeight, parseFloat(document.body.style.minHeight) || 0);
+        return { top: r.top, bottom: r.bottom, height };
+    });
+    check('row menu is never clipped', fit.top >= 0 && fit.bottom <= fit.height, JSON.stringify(fit));
+    check('menu takes keyboard focus', await popup.evaluate(() => document.activeElement?.getAttribute('role') === 'menuitem'));
+    await popup.keyboard.press('Escape');
+    check('closing the menu restores the popup size', (await popup.evaluate(() => document.body.style.minHeight)) === '');
+    await popup.setViewport({ width: 420, height: 600 });
+    await (await (await rowOf('popup-added')).$('[data-testid="more"]')).click();
+    await popup.waitForSelector('[data-testid="move-to"]', { visible: true, timeout: 3000 }).catch(() => {});
+    await popup.click('[data-testid="move-to"]');
+    await sleep(2000);
+    check('row menu moves back to the default location', (await dirOf('popup-added')) === defaultDir, await dirOf('popup-added'));
+
     await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [] }));
 
     // remove via the row menu with confirmation

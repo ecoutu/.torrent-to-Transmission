@@ -1,23 +1,30 @@
 <script lang="ts" module>
-    export type RowAction = 'start' | 'stop' | 'queue-up' | 'queue-down' | 'verify' | 'remove' | 'remove-data';
+    export type RowAction =
+        | 'start' | 'stop' | 'queue-up' | 'queue-down' | 'verify' | 'remove' | 'remove-data'
+        | { move: string };
 </script>
 
 <script lang="ts">
+    import { tick } from 'svelte';
     import Icon from '@/components/Icon.svelte';
     import { formatSpeed, type TorrentView } from '@/utils/format';
-    import type { Torrent, Units } from '@/utils/transmission';
+    import { samePath, type DownloadLocation, type Torrent, type Units } from '@/utils/transmission';
 
     let {
         torrent,
         view,
         units,
         supportsQueue,
+        locations,
+        defaultDir,
         onaction
     }: {
         torrent: Torrent;
         view: TorrentView;
         units: Units;
         supportsQueue: boolean;
+        locations: DownloadLocation[];
+        defaultDir: string;
         onaction: (action: RowAction) => void;
     } = $props();
 
@@ -26,28 +33,75 @@
     let menuEl = $state<HTMLElement>();
     let menuButton = $state<HTMLButtonElement>();
 
+    // Locations to offer under "Move to", excluding where it already is.
+    const moveTargets = $derived(
+        locations.length
+            ? [
+                ...(defaultDir ? [{ label: 'Default location', dir: defaultDir }] : []),
+                ...locations.map(([label, dir]) => ({ label: label || dir, dir }))
+            ].filter(({ dir }, i, all) =>
+                !samePath(dir, torrent.downloadDir) && all.findIndex((t) => samePath(t.dir, dir)) === i)
+            : []
+    );
+
     const running = $derived(view.state !== 'paused' && view.state !== 'done' && view.state !== 'error');
     const showDown = $derived(view.state === 'download');
     const showUp = $derived(view.state === 'download' || view.state === 'seed');
 
     function act(action: RowAction) {
-        menuOpen = false;
+        closeMenu();
         confirming = false;
         onaction(action);
     }
 
-    function openMenu() {
-        menuOpen = !menuOpen;
+    let menuStyle = $state('');
+
+    async function openMenu() {
         if (menuOpen) {
-            queueMicrotask(() => menuEl?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
+            closeMenu();
+            return;
         }
+        menuOpen = true;
+        menuStyle = 'visibility: hidden';
+        await tick();
+        positionMenu();
+        // the menu is hidden until positioned, and hidden elements can't take focus
+        await tick();
+        menuEl?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    }
+
+    function closeMenu() {
+        menuOpen = false;
+        // undo any growth from positionMenu
+        document.body.style.minHeight = '';
+    }
+
+    /*
+        The list scrolls, so the menu is position: fixed to avoid being
+        clipped. Open below the button, flip above if it doesn't fit, and
+        otherwise grow the popup (Chrome sizes popups to their content).
+    */
+    function positionMenu() {
+        if (!menuEl || !menuButton) return;
+        const button = menuButton.getBoundingClientRect();
+        const height = menuEl.offsetHeight;
+        const right = document.documentElement.clientWidth - button.right;
+        let top = button.bottom + 4;
+        if (top + height > window.innerHeight - 4) {
+            if (button.top - height - 4 >= 4) {
+                top = button.top - height - 4;
+            } else {
+                document.body.style.minHeight = top + height + 8 + 'px';
+            }
+        }
+        menuStyle = `top: ${top}px; right: ${right}px`;
     }
 
     function onMenuKey(event: KeyboardEvent) {
         const items = Array.from(menuEl?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
         const index = items.indexOf(document.activeElement as HTMLElement);
         if (event.key === 'Escape') {
-            menuOpen = false;
+            closeMenu();
             menuButton?.focus();
         } else if (event.key === 'ArrowDown') {
             event.preventDefault();
@@ -60,16 +114,23 @@
 
     function onWindowClick(event: MouseEvent) {
         if (menuOpen && !menuEl?.contains(event.target as Node) && !menuButton?.contains(event.target as Node)) {
-            menuOpen = false;
+            closeMenu();
+        }
+    }
+
+    // A fixed menu would drift away from its row when the list scrolls.
+    function onScroll(event: Event) {
+        if (menuOpen && !menuEl?.contains(event.target as Node)) {
+            closeMenu();
         }
     }
 </script>
 
-<svelte:window onclick={onWindowClick} />
+<svelte:window onclick={onWindowClick} onscrollcapture={onScroll} />
 
 <li class="row" data-testid="torrent" data-id={torrent.id} data-state={view.state}>
     <div class="top">
-        <span class="name" title={torrent.name}>{torrent.name}</span>
+        <span class="name" title="{torrent.name}{torrent.downloadDir ? '\n' + torrent.downloadDir : ''}">{torrent.name}</span>
         <div class="actions">
             {#if running}
                 <button class="icon-btn small" data-testid="pause" aria-label="Pause {torrent.name}" title="Pause" onclick={() => act('stop')}>
@@ -93,14 +154,23 @@
                     <Icon name="more" size={15} />
                 </button>
                 {#if menuOpen}
-                    <div class="menu" role="menu" tabindex="-1" bind:this={menuEl} onkeydown={onMenuKey}>
+                    <div class="menu" role="menu" tabindex="-1" style={menuStyle} bind:this={menuEl} onkeydown={onMenuKey}>
                         {#if supportsQueue}
                             <button role="menuitem" onclick={() => act('queue-up')}><Icon name="chevronUp" size={14} />Move up in queue</button>
                             <button role="menuitem" onclick={() => act('queue-down')}><Icon name="chevronDown" size={14} />Move down in queue</button>
                         {/if}
                         <button role="menuitem" onclick={() => act('verify')}><Icon name="verify" size={14} />Verify local data</button>
+                        {#if moveTargets.length}
+                            <hr />
+                            <div class="menu-heading" aria-hidden="true">Move to</div>
+                            {#each moveTargets as target (target.dir)}
+                                <button role="menuitem" data-testid="move-to" title={target.dir} onclick={() => act({ move: target.dir })}>
+                                    <Icon name="folder" size={14} />{target.label}
+                                </button>
+                            {/each}
+                        {/if}
                         <hr />
-                        <button role="menuitem" class="danger" data-testid="remove" onclick={() => { menuOpen = false; confirming = true; }}>
+                        <button role="menuitem" class="danger" data-testid="remove" onclick={() => { closeMenu(); confirming = true; }}>
                             <Icon name="trash" size={14} />Remove…
                         </button>
                     </div>
@@ -180,10 +250,8 @@
     }
 
     .menu {
-        position: absolute;
+        position: fixed;
         z-index: 10;
-        top: calc(100% + 4px);
-        right: 0;
         min-width: 190px;
         padding: 4px;
         border: 1px solid var(--border);
@@ -211,6 +279,15 @@
     .menu button:focus-visible {
         outline: none;
         background: var(--surface-hover);
+    }
+
+    .menu-heading {
+        padding: 4px 8px 2px;
+        color: var(--text-faint);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
     }
 
     .menu button.danger {

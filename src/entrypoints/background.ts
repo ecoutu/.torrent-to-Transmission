@@ -300,9 +300,31 @@ async function sendTorrent(linkUrl: string, downloadDir?: string): Promise<AddTo
     const added = data.arguments?.['torrent-added'];
     const duplicate = data.arguments?.['torrent-duplicate'];
     if (duplicate && !added) {
-        return { ok: true, title: 'Already in Transmission', message: duplicate.name };
+        return describeDuplicate(duplicate, downloadDir);
     }
     return { ok: true, title: 'Torrent added', message: added?.name ?? '' };
+}
+
+/*
+    Transmission ignores download-dir for a torrent it already has, so say
+    where it actually is (torrent-add only returns id, name and hash).
+*/
+async function describeDuplicate(duplicate: Pick<Torrent, 'id' | 'name'>, downloadDir?: string): Promise<AddTorrentResult> {
+    const { data } = await rpcRequest<{ torrents: Pick<Torrent, 'downloadDir'>[] }>({
+        method: 'torrent-get',
+        arguments: { ids: [duplicate.id], fields: ['downloadDir'] }
+    });
+    const currentDir = data?.arguments?.torrents[0]?.downloadDir ?? '';
+    const { 'session-info': session } = await browser.storage.local.get('session-info') as { 'session-info'?: SessionInfo };
+    const requestedDir = downloadDir || (session?.arguments['download-dir'] as string | undefined);
+
+    return {
+        ok: true,
+        title: 'Already in Transmission',
+        message: duplicate.name + (currentDir ? ' · saved in ' + currentDir : ''),
+        existing: { id: duplicate.id, name: duplicate.name, downloadDir: currentDir },
+        requestedDir
+    };
 }
 
 /*

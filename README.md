@@ -46,7 +46,8 @@ For Firefox, run `npm run build:firefox`, open `about:debugging#/runtime/this-fi
 
 ### Managing torrents
 - Filter with the **All / Downloading / Seeding / Paused** tabs. A search box appears once you have more than a handful of torrents.
-- Each row has pause/resume and a **⋯** menu with *Move up/down in queue*, *Verify local data* and *Remove…*. Removing asks whether to keep or delete the downloaded files.
+- Each row has pause/resume and a **⋯** menu with *Move up/down in queue*, *Verify local data*, *Move to* (your download locations) and *Remove…*. Removing asks whether to keep or delete the downloaded files.
+- Sending a torrent Transmission already has doesn't move it. The extension tells you where it's saved, and the popup offers **Move to …** if you picked a different location.
 - **Resume all** / **Pause all** at the bottom apply to every torrent.
 - The turtle button toggles alternative speed limits, and the arrow button opens Transmission's web interface.
 

@@ -64,7 +64,7 @@ describe('describeTorrent', () => {
         id: 1, name: 't', status: S.DOWNLOAD, sizeWhenDone: 4_000_000_000, leftUntilDone: 2_800_000_000,
         percentDone: 0.3, rateDownload: 0, rateUpload: 0, peersConnected: 0, peersGettingFromUs: 0,
         peersSendingToUs: 0, recheckProgress: 0, queuePosition: 0, error: 0, errorString: '', eta: 750,
-        uploadRatio: 1.234,
+        uploadRatio: 1.234, downloadDir: '/downloads',
         ...overrides
     });
 
