@@ -143,6 +143,8 @@ If you're security-conscious, you can:
 | `npm run compile` | Type-check with `tsc` |
 | `npm test` | Run unit tests |
 
+CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull request. On merge to `master` it also builds the Chrome Web Store zip and attaches it to the workflow run as an artifact.
+
 ### Testing
 1. Run `npm test` and `npm run compile`
 2. Load `.output/chrome-mv3` in developer mode and point it at your Transmission instance
