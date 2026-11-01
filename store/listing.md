@@ -1,6 +1,7 @@
-# Chrome Web Store listing — 1.2.0
+# Chrome Web Store listing — 1.2.x
 
 Copy each section into the matching field in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+Upload the Chrome zip from the latest GitHub release (1.2.1 or newer); the screenshots match that build.
 Images are in `store/images/` (regenerate with `npm run build && npm run store:assets`).
 
 ---
@@ -48,7 +49,7 @@ NEW IN 1.2
 • Clear messages when a torrent is already added, can't be moved, or the server can't be reached, with one-click Retry
 • Optional magnet-link clicking
 • Privacy: the extension only asks for access to your Transmission server; access to other sites is requested only if you turn on a feature that needs it
-• Fixes: torrents now show when the popup opens, magnet links are added reliably, and sizes and speeds are correct on Transmission 4
+• Fixes: torrents now show when the popup opens, magnet links are added reliably, and sizes and speeds are correct on Transmission 4 and formatted like Transmission's own interface
 
 SETUP
 1. Enable remote access (the web interface) in Transmission's preferences.
