@@ -5,7 +5,9 @@
     - a Chrome build in .output/chrome-mv3 (npm run build)
     - Transmission RPC at E2E_RPC_URL (default http://127.0.0.1:9091/transmission/rpc)
       with username/password test/test, e.g.:
-        docker run -d -p 127.0.0.1:9091:9091 -e USER=test -e PASS=test lscr.io/linuxserver/transmission
+        docker run -d --name t2t-e2e -p 127.0.0.1:9091:9091 -e USER=test -e PASS=test lscr.io/linuxserver/transmission
+        docker exec t2t-e2e sh -c 'mkdir -p /downloads/complete /downloads/incomplete && chown -R abc:abc /downloads'
+      (the image has no /downloads, and the move tests need writable folders there)
     - Chrome at CHROME_PATH (default /usr/bin/google-chrome)
 
     Usage: npm run test:e2e
