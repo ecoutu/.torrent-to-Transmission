@@ -13,9 +13,11 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "test:e2e": "node tests/e2e/run.mjs"
   },
   "devDependencies": {
+    "puppeteer-core": "^24.43.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.12",
     "wxt": "^0.21.5"
