@@ -56,7 +56,13 @@ describe('context menu: add torrent', () => {
             if (!headers[SESSION_HEADER]) {
                 return new Response('', { status: 409, headers: { [SESSION_HEADER]: 'sid' } });
             }
-            const { method } = rpcBody(init);
+            const { method, arguments: args } = rpcBody(init);
+            if (method === 'torrent-add' && String(args.filename).includes('duplicate')) {
+                return Response.json({ result: 'success', arguments: { 'torrent-duplicate': { id: 7, name: 'Sintel' } } });
+            }
+            if (method === 'torrent-get' && args.ids?.[0] === 7) {
+                return Response.json({ result: 'success', arguments: { torrents: [{ downloadDir: '/data/movies' }] } });
+            }
             if (method === 'torrent-add') {
                 return Response.json({ result: 'success', arguments: { 'torrent-added': { id: 1, name: 'Debian ISO' } } });
             }
@@ -134,6 +140,20 @@ describe('context menu: add torrent', () => {
         await vi.waitFor(() => expect(notifications).toEqual([{ title: 'Torrent added', message: 'Debian ISO' }]));
         const adds = fetchMock.mock.calls.filter(([, init]) => rpcBody(init).method === 'torrent-add');
         expect(adds.every(([, init]) => rpcBody(init).arguments.filename === 'magnet:?xt=urn:btih:abc')).toBe(true);
+    });
+
+    it('reports where a duplicate already is', async () => {
+        await fakeBrowser.storage.local.set({ 'session-info': { result: 'success', arguments: { 'rpc-version': 17, 'download-dir': '/data/default' } } });
+        const reply = await new Promise((resolve) => {
+            onMessage({ method: 'add-torrent', url: 'magnet:?xt=urn:btih:duplicate' }, popupSender(), resolve);
+        });
+        expect(reply).toEqual({
+            ok: true,
+            title: 'Already in Transmission',
+            message: 'Sintel · saved in /data/movies',
+            existing: { id: 7, name: 'Sintel', downloadDir: '/data/movies' },
+            requestedDir: '/data/default'
+        });
     });
 
     it('rejects popup input that is not a torrent link', async () => {

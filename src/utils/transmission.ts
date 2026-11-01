@@ -94,6 +94,7 @@ export interface Torrent {
     errorString: string;
     eta: number;
     uploadRatio: number;
+    downloadDir: string;
 }
 
 export const TORRENT_FIELDS: (keyof Torrent)[] = [
@@ -113,7 +114,8 @@ export const TORRENT_FIELDS: (keyof Torrent)[] = [
     'error',
     'errorString',
     'eta',
-    'uploadRatio'
+    'uploadRatio',
+    'downloadDir'
 ];
 
 export interface Units {
@@ -161,6 +163,17 @@ export interface AddTorrentResult {
     ok: boolean;
     title: string;
     message: string;
+    // Set when the torrent was already in Transmission.
+    existing?: { id: number; name: string; downloadDir: string };
+    // Where the torrent was asked to go (the chosen location, or the
+    // server's default download directory).
+    requestedDir?: string;
+}
+
+// Compare server paths, ignoring trailing slashes.
+export function samePath(a: string | undefined, b: string | undefined): boolean {
+    const normalize = (path: string | undefined) => (path ?? '').replace(/\/+$/, '') || '/';
+    return normalize(a) === normalize(b);
 }
 
 // Links that can be sent to Transmission: magnet links and http(s) URLs.

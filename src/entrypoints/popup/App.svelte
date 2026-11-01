@@ -63,6 +63,7 @@
     const altSpeed = $derived(!!data['session-info']?.arguments['alt-speed-enabled']);
     const supportsQueue = $derived((data.rpc_version ?? 0) >= 14);
     const locations = $derived<DownloadLocation[]>((data['additional-paths'] ?? []).filter(([, dir]) => dir));
+    const defaultDir = $derived((data['session-info']?.arguments['download-dir'] as string | undefined) ?? '');
     const webURL = $derived(webInterfaceURL(data.webURL, data.rpcURL));
 
     const torrents = $derived(
@@ -121,6 +122,9 @@
 
     function onaction(id: number, action: RowAction) {
         const ids = [id];
+        if (typeof action === 'object') {
+            return rpc({ method: 'torrent-set-location', arguments: { ids, location: action.move, move: true } });
+        }
         switch (action) {
             case 'start': return rpc({ method: 'torrent-start', arguments: { ids } });
             case 'stop': return rpc({ method: 'torrent-stop', arguments: { ids } });
@@ -236,7 +240,7 @@
         />
     {:else}
         {#if adding}
-            <AddTorrent {locations} onclose={() => (adding = false)} />
+            <AddTorrent {locations} {defaultDir} onclose={() => (adding = false)} />
         {/if}
 
         <div class="filters">
@@ -265,7 +269,7 @@
         {#if visible.length}
             <ul class="list" data-testid="torrent-list">
                 {#each visible as { torrent, view } (torrent.id)}
-                    <TorrentRow {torrent} {view} {units} {supportsQueue} onaction={(action) => onaction(torrent.id, action)} />
+                    <TorrentRow {torrent} {view} {units} {supportsQueue} {locations} {defaultDir} onaction={(action) => onaction(torrent.id, action)} />
                 {/each}
             </ul>
         {:else}

@@ -1,14 +1,48 @@
 <script lang="ts">
     import { browser } from 'wxt/browser';
     import Icon from '@/components/Icon.svelte';
-    import type { AddTorrentResult, BackgroundMessage, DownloadLocation } from '@/utils/transmission';
+    import { samePath, type AddTorrentResult, type BackgroundMessage, type DownloadLocation } from '@/utils/transmission';
 
-    let { locations, onclose }: { locations: DownloadLocation[]; onclose: () => void } = $props();
+    let {
+        locations,
+        defaultDir,
+        onclose
+    }: { locations: DownloadLocation[]; defaultDir: string; onclose: () => void } = $props();
 
     let url = $state('');
     let location = $state('');
     let busy = $state(false);
     let result = $state<AddTorrentResult | null>(null);
+    let moved = $state('');
+
+    // Already in Transmission, but somewhere other than where it was sent.
+    const moveTarget = $derived(
+        result?.existing && result.requestedDir && !samePath(result.existing.downloadDir, result.requestedDir)
+            ? result.requestedDir
+            : ''
+    );
+
+    function locationName(dir: string) {
+        const match = locations.find(([, directory]) => samePath(directory, dir));
+        if (match) return match[0] || match[1];
+        return samePath(dir, defaultDir) ? 'default location' : dir;
+    }
+
+    async function moveExisting() {
+        if (!result?.existing || !moveTarget) return;
+        const target = moveTarget;
+        const msg: BackgroundMessage = {
+            method: 'rpc-call',
+            payload: { method: 'torrent-set-location', arguments: { ids: [result.existing.id], location: target, move: true } }
+        };
+        const reply = await browser.runtime.sendMessage(msg).catch(() => null) as { status?: number; data?: { result?: string } } | null;
+        if (reply?.status === 200 && reply.data?.result === 'success') {
+            moved = target;
+            result = { ok: true, title: 'Moving to ' + locationName(target), message: result.existing.name };
+        } else {
+            result = { ok: false, title: 'Couldn\'t move the torrent', message: reply?.data?.result ?? 'Transmission didn\'t respond.' };
+        }
+    }
     let input = $state<HTMLInputElement>();
 
     $effect(() => {
@@ -21,6 +55,7 @@
         if (!link || busy) return;
         busy = true;
         result = null;
+        moved = '';
         const msg: BackgroundMessage = { method: 'add-torrent', url: link, downloadDir: location || undefined };
         try {
             result = await browser.runtime.sendMessage(msg) as AddTorrentResult;
@@ -76,6 +111,14 @@
             <Icon name={result.ok ? 'check' : 'alert'} size={14} />
             <span><strong>{result.title}</strong>{#if result.message}<span class="msg"> {result.message}</span>{/if}</span>
         </p>
+        {#if moveTarget && !moved}
+            <div class="move">
+                <button type="button" class="btn small" data-testid="move-existing" onclick={moveExisting}>
+                    <Icon name="folder" size={13} />Move to {locationName(moveTarget)}
+                </button>
+                <span class="muted">Moves the files on the server.</span>
+            </div>
+        {/if}
     {/if}
 </form>
 
@@ -127,7 +170,15 @@
         margin-top: 1px;
     }
 
+    .move {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+
     .msg {
+        display: block;
         color: var(--text-muted);
         word-break: break-word;
     }
