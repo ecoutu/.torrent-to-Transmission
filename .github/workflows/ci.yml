@@ -28,10 +28,41 @@ jobs:
       - run: npm run build:firefox
       - run: npx --yes web-ext@10 lint --source-dir .output/firefox-mv3
 
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      transmission:
+        image: lscr.io/linuxserver/transmission:latest
+        env:
+          USER: test
+          PASS: test
+        ports:
+          - 9091:9091
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # the upgrade test builds the last released version from history
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run test:e2e
+        env:
+          E2E_SCREENSHOTS: e2e-screenshots
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-screenshots
+          path: e2e-screenshots
+          if-no-files-found: ignore
+
   # On merge to master, build the Chrome Web Store and AMO zips and attach them to the run.
   zip:
     if: github.event_name == 'push'
-    needs: check
+    needs: [check, e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -51,4 +82,3 @@ jobs:
             .output/*-chrome.zip
             .output/*-firefox.zip
             .output/*-sources.zip
-          if-no-files-found: error

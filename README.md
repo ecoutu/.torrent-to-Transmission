@@ -135,8 +135,19 @@ If access is missing, the popup shows an **Allow access** button. Existing users
 | `npm run zip` / `zip:firefox` | Build a zip for the Chrome Web Store / addons.mozilla.org (plus a sources zip) |
 | `npm run compile` | Type-check with `tsc` |
 | `npm test` | Run unit tests |
+| `npm run test:e2e` | Run end-to-end tests in Chrome against a Transmission server (see `tests/e2e/run.mjs`) |
 
-CI (`.github/workflows/ci.yml`) runs type-check, tests and build on every pull request. It also lints the Firefox build with `web-ext`. On merge to `master` it builds the Chrome Web Store and AMO zips and attaches them to the workflow run as an artifact.
+CI (`.github/workflows/ci.yml`) runs type-check, unit tests, both browser builds, a `web-ext` lint of the Firefox build and the end-to-end suite (against a Transmission service container) on every pull request. On merge to `master` it also builds the store zips and attaches them to the workflow run.
+
+### Releasing
+
+1. Bump `version` in `package.json` and merge to `master`.
+2. Push a matching tag: `git tag v1.2.0 && git push origin v1.2.0`.
+3. `.github/workflows/release.yml` creates a GitHub release with the zips and submits them to each store whose secrets are configured:
+   - Chrome Web Store: `CHROME_EXTENSION_ID`, `CHROME_CLIENT_ID`, `CHROME_CLIENT_SECRET`, `CHROME_REFRESH_TOKEN`
+   - Firefox Add-ons: `FIREFOX_EXTENSION_ID`, `FIREFOX_JWT_ISSUER`, `FIREFOX_JWT_SECRET`
+
+   Run `npx wxt submit init` locally to generate these values, then validate them by running the Release workflow manually with **dry run** checked.
 
 ### Testing
 1. Run `npm test` and `npm run compile`
