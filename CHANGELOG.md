@@ -1,3 +1,9 @@
+## [1.2.1](https://github.com/ecoutu/.torrent-to-Transmission/compare/v1.2.0...v1.2.1) (2026-11-01)
+
+### Bug Fixes
+
+* format sizes and speeds like Transmission ([a717512](https://github.com/ecoutu/.torrent-to-Transmission/commit/a7175120a70ddb936e32e9be35018b2fd16ee313))
+
 ## [1.2.0](https://github.com/ecoutu/.torrent-to-Transmission/compare/v1.1.0...v1.2.0) (2026-11-01)
 
 ### Features
