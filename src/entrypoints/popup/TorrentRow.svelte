@@ -1,7 +1,7 @@
 <script lang="ts" module>
     export type RowAction =
         | 'start' | 'stop' | 'queue-up' | 'queue-down' | 'verify' | 'remove' | 'remove-data'
-        | { move: string };
+        | { move: string; label: string };
 </script>
 
 <script lang="ts">
@@ -9,6 +9,7 @@
     import Icon from '@/components/Icon.svelte';
     import { formatSpeed, type TorrentView } from '@/utils/format';
     import { samePath, type DownloadLocation, type Torrent, type Units } from '@/utils/transmission';
+    import type { MoveStatus } from './moves.svelte';
 
     let {
         torrent,
@@ -17,6 +18,7 @@
         supportsQueue,
         locations,
         defaultDir,
+        move,
         onaction
     }: {
         torrent: Torrent;
@@ -25,6 +27,7 @@
         supportsQueue: boolean;
         locations: DownloadLocation[];
         defaultDir: string;
+        move?: MoveStatus;
         onaction: (action: RowAction) => void;
     } = $props();
 
@@ -43,6 +46,16 @@
                 !samePath(dir, torrent.downloadDir) && all.findIndex((t) => samePath(t.dir, dir)) === i)
             : []
     );
+
+    // A move that outlived the popup's watch window: done once the folder changes.
+    const moveStatus = $derived(
+        move?.state === 'moving' && move.message && samePath(torrent.downloadDir, move.target)
+            ? { ...move, state: 'moved' as const, message: undefined }
+            : move
+    );
+    // An error on the torrent (e.g. the move failed) is the latest truth, and
+    // the row shows it, even if the move watcher hasn't noticed yet.
+    const showMove = $derived(!!moveStatus && view.state !== 'error');
 
     const running = $derived(view.state !== 'paused' && view.state !== 'done' && view.state !== 'error');
     const showDown = $derived(view.state === 'download');
@@ -132,7 +145,11 @@
     <div class="top">
         <span class="name" title="{torrent.name}{torrent.downloadDir ? '\n' + torrent.downloadDir : ''}">{torrent.name}</span>
         <div class="actions">
-            {#if running}
+            {#if view.state === 'error'}
+                <button class="btn small retry" data-testid="retry" title="Clear the error and resume" onclick={() => act('start')}>
+                    <Icon name="refresh" size={13} />Retry
+                </button>
+            {:else if running}
                 <button class="icon-btn small" data-testid="pause" aria-label="Pause {torrent.name}" title="Pause" onclick={() => act('stop')}>
                     <Icon name="pause" size={15} />
                 </button>
@@ -164,7 +181,7 @@
                             <hr />
                             <div class="menu-heading" aria-hidden="true">Move to</div>
                             {#each moveTargets as target (target.dir)}
-                                <button role="menuitem" data-testid="move-to" title={target.dir} onclick={() => act({ move: target.dir })}>
+                                <button role="menuitem" data-testid="move-to" title={target.dir} onclick={() => act({ move: target.dir, label: target.label })}>
                                     <Icon name="folder" size={14} />{target.label}
                                 </button>
                             {/each}
@@ -201,10 +218,22 @@
         </div>
     {:else}
         <div class="bottom">
-            <span class="status">
+            {#if showMove && moveStatus}
+            <span class="status move-{moveStatus.state}" data-testid="move-status" title={moveStatus.message ?? ''}>
+                {#if moveStatus.state === 'moving'}
+                    Moving to {moveStatus.label}…{#if moveStatus.message}<span class="detail"> · {moveStatus.message}</span>{/if}
+                {:else if moveStatus.state === 'moved'}
+                    <Icon name="check" size={12} /> Moved to {moveStatus.label}
+                {:else}
+                    Couldn't move to {moveStatus.label}{#if moveStatus.message}<span class="detail"> · {moveStatus.message}</span>{/if}
+                {/if}
+            </span>
+            {:else}
+            <span class="status" class:wrap={view.state === 'error'} title={view.state === 'error' ? view.detail : undefined}>
                 <span class="label state-{view.state}">{view.label}</span>
                 {#if view.detail}<span class="detail"> · {view.detail}</span>{/if}
             </span>
+            {/if}
             <span class="speeds">
                 {#if showDown}<span title="Download speed"><Icon name="down" size={11} />{formatSpeed(torrent.rateDownload, units)}</span>{/if}
                 {#if showUp}<span title="Upload speed"><Icon name="up" size={11} />{formatSpeed(torrent.rateUpload, units)}</span>{/if}
@@ -339,6 +368,42 @@
 
     .label {
         font-weight: 500;
+    }
+
+    /* show the whole error (up to 3 lines) instead of cutting it off */
+    .status.wrap {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        line-clamp: 3;
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .status.move-moving {
+        color: var(--accent);
+    }
+
+    .status.move-moved {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        color: var(--success);
+    }
+
+    .status.move-failed {
+        color: var(--danger);
+    }
+
+    .retry {
+        height: 24px;
+        border-color: var(--danger);
+        color: var(--danger);
+    }
+
+    .retry:hover:not(:disabled) {
+        background: var(--danger-soft);
     }
 
     .label.state-download { color: var(--state-download); }

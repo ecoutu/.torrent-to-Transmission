@@ -22,6 +22,7 @@
     import AddTorrent from './AddTorrent.svelte';
     import ConnectionState from './ConnectionState.svelte';
     import TorrentRow, { type RowAction } from './TorrentRow.svelte';
+    import { moves, moveTorrent } from './moves.svelte';
 
     interface PopupStorage extends Partial<Settings> {
         lastStatus?: number;
@@ -123,7 +124,7 @@
     function onaction(id: number, action: RowAction) {
         const ids = [id];
         if (typeof action === 'object') {
-            return rpc({ method: 'torrent-set-location', arguments: { ids, location: action.move, move: true } });
+            return moveTorrent(id, action.move, action.label);
         }
         switch (action) {
             case 'start': return rpc({ method: 'torrent-start', arguments: { ids } });
@@ -269,7 +270,7 @@
         {#if visible.length}
             <ul class="list" data-testid="torrent-list">
                 {#each visible as { torrent, view } (torrent.id)}
-                    <TorrentRow {torrent} {view} {units} {supportsQueue} {locations} {defaultDir} onaction={(action) => onaction(torrent.id, action)} />
+                    <TorrentRow {torrent} {view} {units} {supportsQueue} {locations} {defaultDir} move={moves[torrent.id]} onaction={(action) => onaction(torrent.id, action)} />
                 {/each}
             </ul>
         {:else}
