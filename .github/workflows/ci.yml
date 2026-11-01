@@ -50,6 +50,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # the image has no /downloads; moving torrents needs writable folders there
+      - name: Prepare Transmission download folders
+        run: docker exec ${{ job.services.transmission.id }} sh -c 'mkdir -p /downloads/complete /downloads/incomplete && chown -R abc:abc /downloads'
       - run: npm run test:e2e
         env:
           E2E_SCREENSHOTS: e2e-screenshots
