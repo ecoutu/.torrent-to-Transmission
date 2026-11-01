@@ -4,6 +4,7 @@ import { defineConfig } from 'wxt';
 export default defineConfig({
   srcDir: 'src',
   imports: false,
+  modules: ['@wxt-dev/module-svelte'],
   manifestVersion: 3,
   hooks: {
     // WXT adds runtime-registered content script matches to host_permissions;
