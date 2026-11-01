@@ -114,6 +114,17 @@ async function extPage(browser, id, path) {
     return page;
 }
 
+// Poll fn until done(value) or timeout; returns the last value.
+async function until(fn, done, timeout = 8000) {
+    const deadline = Date.now() + timeout;
+    let value = await fn();
+    while (!done(value) && Date.now() < deadline) {
+        await sleep(250);
+        value = await fn();
+    }
+    return value;
+}
+
 const waitFor = (page, fn, arg) => page.waitForFunction(fn, { timeout: 6000 }, arg).catch(() => {});
 
 /* Scenarios */
@@ -254,8 +265,10 @@ async function popupFlows(browser, id, options) {
     check('duplicate offers to move it', !!(await popup.$('[data-testid="move-existing"]')));
     await screenshot(popup, 'popup-duplicate');
     await popup.click('[data-testid="move-existing"]');
-    await sleep(2000);
-    check('move button moves the torrent', (await dirOf('popup-added')) === defaultDir, await dirOf('popup-added'));
+    await waitFor(popup, () => document.querySelector('[data-testid="add-result"]')?.textContent.includes('Moving to'));
+    const moveResult = await popup.$eval('[data-testid="add-result"]', (e) => e.textContent.trim()).catch(() => '');
+    const movedDir = await until(() => dirOf('popup-added'), (dir) => dir === defaultDir);
+    check('move button moves the torrent', movedDir === defaultDir, `${movedDir} (popup: ${moveResult})`);
     await popup.click('[data-testid="toggle-add"]');
 
     // "Move to" from the row menu
@@ -268,8 +281,8 @@ async function popupFlows(browser, id, options) {
     check('row menu lists other locations', JSON.stringify(targets) === '["Movies"]', JSON.stringify(targets));
     await screenshot(popup, 'popup-move-menu');
     await popup.click('[data-testid="move-to"]');
-    await sleep(2000);
-    check('row menu moves the torrent', (await dirOf('popup-added')) === '/downloads/movies', await dirOf('popup-added'));
+    const rowMoved = await until(() => dirOf('popup-added'), (dir) => dir === '/downloads/movies');
+    check('row menu moves the torrent', rowMoved === '/downloads/movies', rowMoved);
 
     // in a popup sized to its content the menu must flip up or grow the page, never be cut off
     await popup.setViewport({ width: 420, height: 220 });
@@ -288,8 +301,8 @@ async function popupFlows(browser, id, options) {
     await (await (await rowOf('popup-added')).$('[data-testid="more"]')).click();
     await popup.waitForSelector('[data-testid="move-to"]', { visible: true, timeout: 3000 }).catch(() => {});
     await popup.click('[data-testid="move-to"]');
-    await sleep(2000);
-    check('row menu moves back to the default location', (await dirOf('popup-added')) === defaultDir, await dirOf('popup-added'));
+    const movedBack = await until(() => dirOf('popup-added'), (dir) => dir === defaultDir);
+    check('row menu moves back to the default location', movedBack === defaultDir, movedBack);
 
     await options.evaluate(() => chrome.storage.local.set({ 'additional-paths': [] }));
 
